@@ -71,34 +71,87 @@
 
             
             <!-- Paletes -->
-            <div class="tab-pane fade" id="tab-paletes">
-            
-                <h3>Paletes Registradas</h3>
-                <ul id="lista-paletes"></ul>
-            
-                <h3>Adicionar Palete</h3>
-                <div class="d-flex align-items-center mb-3">
-                    <!-- Campo Número da Palete -->
-                    <div class="me-3" style="flex: 1;">
-                        <label for="numero-palete">Número da Palete:</label>
-                        <input type="text" id="numero-palete" class="form-control" placeholder="Número da Palete">
-                    </div>
-            
-                    <!-- Campo Produtos -->
-                    <div style="flex: 2;">
-                        <label for="produtos-palete">Produtos:</label>
-                        <input type="text" id="produtos-palete" class="form-control" placeholder="Produtos">
-                    </div>
+<div class="tab-pane fade" id="tab-paletes">
+
+    <div id="paletes-container">
+        <h3>Dados para QR Code</h3>
+        <ul id="lista-paletes" class="list-group"></ul>
+    </div>
+    
+    <div class="container mt-4">
+        <h2>Adicionar Palete</h2>
+        <form id="form-adicionar-palete" onsubmit="adicionarPalete(); return false;">
+            <div class="row">
+                <div class="col-md-6">
+                    <label for="data-entrega">Data de Entrega:</label>
+                    <input type="date" id="data-entrega" class="form-control" required>
                 </div>
-            
-                <!-- Botão para adicionar -->
-                <div>
-                    <button class="btn btn-success mb-3" onclick="adicionarPalete()">Adicionar Palete</button>
+                <div class="col-md-6">
+                    <label for="op-palete">OP:</label>
+                    <input type="text" id="op-palete" class="form-control" placeholder="Número OP" required>
                 </div>
-            
-                <!-- Mensagem de sucesso para paletes -->
-                <div id="mensagem-sucesso-palete" style="display: none; color: green; margin-bottom: 10px;"></div>
             </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label for="referencia-palete">Referência:</label>
+                    <input type="text" id="referencia-palete" class="form-control" placeholder="Referência" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="nome-produto-palete">Nome do Produto:</label>
+                    <input type="text" id="nome-produto-palete" class="form-control" placeholder="Nome do Produto" required>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label for="medida-palete">Medida:</label>
+                    <input type="text" id="medida-palete" class="form-control" placeholder="Medida" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="cor-botao-palete">Cor do Botão:</label>
+                    <input type="text" id="cor-botao-palete" class="form-control" placeholder="Cor do Botão" required>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label for="cor-ribete-palete">Cor do Ribete:</label>
+                    <input type="text" id="cor-ribete-palete" class="form-control" placeholder="Cor do Ribete" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="leva-embalagem-palete">Leva Embalagem:</label>
+                    <select id="leva-embalagem-palete" class="form-control" required>
+                        <option value="" disabled selected>Selecione...</option>
+                        <option value="true">Sim</option>
+                        <option value="false">Não</option>
+                    </select>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label for="quantidade-palete">Quantidade:</label>
+                    <input type="number" id="quantidade-palete" class="form-control" placeholder="Quantidade" required>
+                </div>
+                <div class="col-md-6">
+                    <label for="data-hora-palete">Data e Hora:</label>
+                    <input type="datetime-local" id="data-hora-palete" class="form-control" required>
+                </div>
+            </div>
+            <div class="row mt-3">
+                <div class="col-md-6">
+                    <label for="numero-lote-palete">Número do Lote:</label>
+                    <input type="text" id="numero-lote-palete" class="form-control" placeholder="Número do Lote" required>
+                </div>
+            </div>
+            
+            <!-- Botão de envio -->
+            <button type="submit" class="btn btn-primary mt-3">Adicionar Palete</button>
+        </form>
+    </div>
+
+    <!-- Mensagem de sucesso ou erro -->
+    <div id="mensagem-sucesso-palete" style="display: none; color: green; margin-top: 10px;"></div>
+    <div id="mensagem-erro-palete" style="display: none; color: red; margin-top: 10px;"></div>
+</div>
+
             
             <!-- Tarefas Concluídas -->
             <div class="tab-pane fade" id="tab-tarefas">

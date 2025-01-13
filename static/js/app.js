@@ -14,10 +14,10 @@ function listarTrabalhadores() {
                 item.className = "list-group-item"; // Classe para estilização básica
 
                 // Adiciona destaque se for chefe
-                if (trabalhador.chefe) {
-                    item.innerHTML = `<strong>${trabalhador.nome} - Seção: ${trabalhador.secao} (Chefe)</strong>`;
+                if (trabalhador.chefe) { // Certifica-se de que é um chefe
+                    item.innerHTML = `<span style="font-weight: bold; color: black;">${trabalhador.nome} - Secção: ${trabalhador.secao} (chefe)</span>`;
                 } else {
-                    item.textContent = `${trabalhador.nome} - Seção: ${trabalhador.secao}`;
+                    item.textContent = `${trabalhador.nome} - Secção: ${trabalhador.secao}`;
                 }
 
                 // Adiciona botão de remover
@@ -145,108 +145,113 @@ function listarTarefas() {
 
             data.forEach(registro => {
                 const item = document.createElement("li");
-                item.textContent = `Registro ID: ${registro.id}, Trabalhador: ${registro.trabalhador.nome} (ID: ${registro.trabalhador.id}), Palete: ${registro.palete.numero_palete} (ID: ${registro.palete.id}), Início: ${registro.horario_inicio}, Fim: ${registro.horario_fim || "Em andamento"}`;
+                item.textContent = `Registro ID: ${registro.id}, Trabalhador: ${registro.trabalhador.nome} (ID: ${registro.trabalhador.id}),  (ID: ${registro.palete.id}), Início: ${registro.horario_inicio}, Fim: ${registro.horario_fim || "Em andamento"}`;
                 lista.appendChild(item);
             });
         })
         .catch(error => console.error("Erro ao carregar os registros de trabalho:", error));
 }
 
+
+
 // Adicionar Palete
 function adicionarPalete() {
-    const numeroPaleteInput = document.getElementById("numero-palete");
-    const produtosPaleteInput = document.getElementById("produtos-palete");
+    const dataEntrega = document.getElementById("data-entrega").value;
+    const op = document.getElementById("op-palete").value;
+    const referencia = document.getElementById("referencia-palete").value;
+    const nomeProduto = document.getElementById("nome-produto-palete").value;
+    const medida = document.getElementById("medida-palete").value;
+    const corBotao = document.getElementById("cor-botao-palete").value;
+    const corRibete = document.getElementById("cor-ribete-palete").value;
+    const levaEmbalagem = document.getElementById("leva-embalagem-palete").value;
+    const quantidade = document.getElementById("quantidade-palete").value;
+    const dataHora = document.getElementById("data-hora-palete").value;
+    const numeroLote = document.getElementById("numero-lote-palete").value;
 
-    const numeroPalete = numeroPaleteInput.value.trim();
-    const produtosPalete = produtosPaleteInput.value.trim().split(",").map(p => p.trim());
-
-    if (!numeroPalete) {
-        alert("Por favor, insira o número da palete.");
+    if (!dataEntrega || !op || !referencia || !nomeProduto || !medida || !corBotao || !corRibete || !levaEmbalagem || !quantidade || !dataHora || !numeroLote) {
+        alert("Todos os campos são obrigatórios!");
         return;
     }
 
-    if (produtosPalete.length === 0 || produtosPalete[0] === "") {
-        alert("Por favor, insira os produtos da palete.");
-        return;
-    }
+    const payload = {
+        data_entrega: dataEntrega,
+        op: op,
+        referencia: referencia,
+        nome_produto: nomeProduto,
+        medida: medida,
+        cor_botao: corBotao,
+        cor_ribete: corRibete,
+        leva_embalagem: levaEmbalagem === "true", // Converte string para boolean
+        quantidade: parseInt(quantidade, 10),
+        data_hora: dataHora,
+        numero_lote: numeroLote,
+    };
 
     fetch(`${API_URL}/paletes`, {
         method: "POST",
-        headers: { "Content-Type": "application/json; charset=utf-8" },
-        body: JSON.stringify({ numero_palete: numeroPalete, produtos: produtosPalete }),
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
     })
-        .then(response => {
+        .then((response) => {
             if (!response.ok) {
-                return response.json().then(err => {
+                return response.json().then((err) => {
                     throw new Error(err.message);
                 });
             }
             return response.json();
         })
-        .then(data => {
-            listarPaletes(); // Atualiza a lista após adicionar
-            numeroPaleteInput.value = ""; // Limpa o campo
-            produtosPaleteInput.value = ""; // Limpa o campo
-
-            // Exibe mensagem de sucesso
-            const mensagemSucesso = document.getElementById("mensagem-sucesso-palete");
-            mensagemSucesso.textContent = data.message || "Palete adicionada com sucesso!";
-            mensagemSucesso.style.display = "block";
-
-            // Esconde a mensagem após 3 segundos
-            setTimeout(() => {
-                mensagemSucesso.style.display = "none";
-            }, 3000);
+        .then((data) => {
+            alert("Palete adicionada com sucesso!");
+            listarPaletes(); // Atualiza a lista
         })
-        .catch(error => {
-            console.error("Erro ao adicionar palete:", error.message);
+        .catch((error) => {
+            console.error("Erro ao adicionar palete:", error);
             alert(`Erro: ${error.message}`);
         });
 }
 
-// Detectar Enter no campo de número da palete
-document.getElementById("numero-palete").addEventListener("keypress", function (event) {
-    if (event.key === "Enter") {
-        adicionarPalete(); // Chama a função de adicionar palete
-        event.preventDefault(); // Evita comportamento padrão
-    }
-});
 
-// Detectar Enter no campo de produtos da palete
-document.getElementById("produtos-palete").addEventListener("keypress", function (event) {
-    if (event.key === "Enter") {
-        adicionarPalete(); // Chama a função de adicionar palete
-        event.preventDefault(); // Evita comportamento padrão
-    }
-});
+
+
+
+// Função para limpar o formulário
+function limparFormularioPalete() {
+    document.getElementById("produto-palete").value = "";
+    document.getElementById("cliente-palete").value = "";
+    document.getElementById("medidas-palete").value = "";
+    document.getElementById("quantidade-palete").value = "";
+    document.getElementById("referencia-palete").value = "";
+}
+
+
+
 
 
 // Remover Palete
 function removerPalete(id) {
     if (confirm("Tem certeza que deseja remover esta palete?")) {
-        fetch(`${API_URL}/paletes/${id}`, { method: "DELETE" })
+        fetch(`${API_URL}/paletes/${id}`, {
+            method: "DELETE",
+        })
             .then(response => {
                 if (!response.ok) {
-                    throw new Error("Erro ao remover palete.");
+                    return response.json().then(err => {
+                        throw new Error(err.message);
+                    });
                 }
                 return response.json();
             })
             .then(data => {
-                listarPaletes(); // Atualiza a lista
-
-                // Exibe mensagem de sucesso
-                const mensagemSucesso = document.getElementById("mensagem-sucesso-palete");
-                mensagemSucesso.textContent = data.message || "Palete removida com sucesso!";
-                mensagemSucesso.style.display = "block";
-
-                // Esconde mensagem após 3 segundos
-                setTimeout(() => {
-                    mensagemSucesso.style.display = "none";
-                }, 3000);
+                alert(data.message || "Palete removida com sucesso!");
+                listarPaletes(); // Atualiza a lista de paletes
             })
-            .catch(error => console.error("Erro ao remover palete:", error));
+            .catch(error => console.error("Erro ao remover palete:", error.message));
     }
 }
+
+
 
 
 // Listar Paletes
@@ -258,14 +263,20 @@ function listarPaletes() {
             lista.innerHTML = ""; // Limpa a lista existente
 
             data.forEach(palete => {
-                // Parse dos produtos (caso venham como JSON string)
-                const produtos = Array.isArray(palete.produtos) ? palete.produtos : JSON.parse(palete.produtos || "[]");
-
                 // Cria um item da lista para a palete
                 const item = document.createElement("li");
                 item.innerHTML = `
-                    <strong>Palete:</strong> ${palete.numero_palete}
-                    <strong>Produtos:</strong> ${produtos.join(", ")}
+                    <strong>Data de Entrega:</strong> ${palete.data_entrega} 
+                    <strong>OP:</strong> ${palete.op} 
+                    <strong>Referência:</strong> ${palete.referencia} 
+                    <strong>Nome do Produto:</strong> ${palete.nome_produto} 
+                    <strong>Medida:</strong> ${palete.medida} 
+                    <strong>Cor do Botão:</strong> ${palete.cor_botao} 
+                    <strong>Cor do Ribete:</strong> ${palete.cor_ribete}
+                    <strong>Leva Embalagem:</strong> ${palete.leva_embalagem} 
+                    <strong>Quantidade:</strong> ${palete.quantidade} 
+                    <strong>Data e Hora:</strong> ${palete.data_hora} 
+                    <strong>Número do Lote:</strong> ${palete.numero_lote}
                 `;
 
                 // Cria o botão de remover
@@ -283,6 +294,8 @@ function listarPaletes() {
         })
         .catch(error => console.error("Erro ao listar paletes:", error));
 }
+
+
 
 
 

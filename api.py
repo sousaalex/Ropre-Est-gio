@@ -121,11 +121,7 @@ class Trabalhador(db.Model):
         return check_password_hash(self.senha_hash, senha)
 
 
-# Modelo Palete
-class Palete(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    numero_palete = db.Column(db.String(100), unique=True, nullable=False)
-    produtos = db.Column(db.Text, nullable=False)  # JSON de produtos
+
 
 # Modelo RegistroTrabalho
 class RegistroTrabalho(db.Model):
@@ -156,11 +152,13 @@ def get_trabalhadores():
         {
             'id': t.id,
             'nome': t.nome,
-            'secao': t.secao,  # Exibe a seção na listagem
+            'secao': t.secao,
+            'chefe': t.chefe  # Inclui a informação se é chefe
         } 
         for t in trabalhadores
     ]
     return jsonify(output)
+
 
 
 
@@ -181,8 +179,26 @@ def add_trabalhador():
         db.session.add(trabalhador)
         db.session.flush()  # Gera o ID do trabalhador sem commit ainda
 
-        # Gerar QR Code e cartão para trabalhador
-        gerar_qr_code(trabalhador.id)
+        # Gerar QR Code com informações detalhadas do trabalhador
+        conteudo = (
+            f"ID: {trabalhador.id}\n"
+            f"Nome: {trabalhador.nome}\n"
+            f"Secção: {trabalhador.secao}\n"
+        )
+        os.makedirs('static/qr_codes', exist_ok=True)
+        qr = qrcode.QRCode(
+            version=1,
+            error_correction=qrcode.constants.ERROR_CORRECT_L,
+            box_size=10,
+            border=4,
+        )
+        qr.add_data(conteudo)
+        qr.make(fit=True)
+        img = qr.make_image(fill_color="black", back_color="white")
+        qr_code_path = f"static/qr_codes/qr_trabalhador_{trabalhador.id}.png"
+        img.save(qr_code_path)
+
+        # Criar cartão do trabalhador
         criar_cartao(trabalhador.id, trabalhador.nome, trabalhador.secao)
 
         if is_chefe:
@@ -197,6 +213,7 @@ def add_trabalhador():
         db.session.rollback()
         print(f"Erro ao adicionar trabalhador: {e}")
         return jsonify({'message': 'Erro ao adicionar trabalhador.', 'details': str(e)}), 500
+
 
 
 
@@ -223,19 +240,27 @@ def delete_trabalhador(id):
 
 
 
-        #caminho para cartao associado
-        cartao_path = os.path.join('static', 'cartoes', f"cartao_trabalhador_{trabalhador.id}.png")
+        #caminho para cartao associado ao trabalhador
+        cartao_path = os.path.join('static', 'cartoes', 'trabalhadores', f"cartao_{trabalhador.id}.png")
 
-        # Remove o arquivo de cartoes, se existir
+        # Remove o arquivo de cartoes de trabalhador, se existir
         if os.path.exists(cartao_path):
             os.remove(cartao_path)
             print(f"Cartão removido: {cartao_path}")
         else:
             print(f"Cartão não encontrado para exclusão: {cartao_path}")
 
+            #caminho para cartao associado ao chefe
+        cartao_chefe_path = os.path.join('static', 'cartoes', 'chefes', f"cartao_{trabalhador.id}.png")
+
+        # Remove o arquivo de cartoes de chefe, se existir
+        if os.path.exists(cartao_chefe_path):
+            os.remove(cartao_chefe_path)
+            print(f"Cartão removido: {cartao_chefe_path}")
+        else:
+            print(f"Cartão não encontrado para exclusão: {cartao_chefe_path}")
 
 
-        
 
         # Remove o trabalhador da base de dados
         db.session.delete(trabalhador)
@@ -257,7 +282,6 @@ def get_registro_trabalho():
         output.append({
             'id': r.id,
             'trabalhador': {'id': r.trabalhador.id, 'nome': r.trabalhador.nome},
-            'palete': {'id': r.palete.id, 'numero_palete': r.palete.numero_palete},
             'horario_inicio': r.horario_inicio.isoformat(),
             'horario_fim': r.horario_fim.isoformat() if r.horario_fim else None
         })
@@ -275,13 +299,10 @@ def registro_trabalho():
         if not trabalhador:
             return jsonify({'message': 'Trabalhador não encontrado'}), 404
 
-        palete = Palete.query.filter_by(numero_palete=data['numero_palete']).first()
-        if not palete:
-            return jsonify({'message': 'Palete não encontrada'}), 404
+        
 
         registro_existente = RegistroTrabalho.query.filter_by(
             trabalhador_id=trabalhador.id,
-            palete_id=palete.id,
             horario_fim=None
         ).first()
 
@@ -291,7 +312,6 @@ def registro_trabalho():
             return jsonify({
                 'registro_id': registro_existente.id,
                 'trabalhador': trabalhador.nome,
-                'palete': palete.numero_palete,
                 'horario_inicio': registro_existente.horario_inicio,
                 'horario_fim': registro_existente.horario_fim,
                 'message': 'Trabalho finalizado com sucesso.'
@@ -299,7 +319,6 @@ def registro_trabalho():
         else:
             novo_registro = RegistroTrabalho(
                 trabalhador_id=trabalhador.id,
-                palete_id=palete.id,
                 horario_inicio=datetime.now(timezone.utc)
             )
             db.session.add(novo_registro)
@@ -307,7 +326,6 @@ def registro_trabalho():
             return jsonify({
                 'registro_id': novo_registro.id,
                 'trabalhador': trabalhador.nome,
-                'palete': palete.numero_palete,
                 'horario_inicio': novo_registro.horario_inicio,
                 'horario_fim': None,
                 'message': 'Trabalho iniciado com sucesso.'
@@ -316,20 +334,109 @@ def registro_trabalho():
         print(f"Erro ao registrar trabalho: {e}")
         return jsonify({'message': 'Erro ao registrar trabalho', 'details': str(e)}), 500
 
-        # Rota para listar todas as paletes
+
+
+
+
+       # Modelo Palete
+class Palete(db.Model):
+    __tablename__ = 'palete'
+    __table_args__ = {'extend_existing': True}  # Permite redefinir a tabela
+
+    id = db.Column(db.Integer, primary_key=True)
+    data_entrega = db.Column(db.String(100), nullable=False)  # Data de entrega
+    op = db.Column(db.String(100), nullable=False)  # OP
+    referencia = db.Column(db.String(100), nullable=False)  # Referência
+    nome_produto = db.Column(db.String(100), nullable=False)  # Nome do produto
+    medida = db.Column(db.String(100), nullable=False)  # Medida
+    cor_botao = db.Column(db.String(100), nullable=False)  # Cor do botão
+    cor_ribete = db.Column(db.String(100), nullable=False)  # Cor do ribete
+    leva_embalagem = db.Column(db.Boolean, nullable=False)  # Leva embalagem (Sim/Não)
+    quantidade = db.Column(db.Integer, nullable=False)  # Quantidade
+    data_hora = db.Column(db.DateTime, nullable=False)  # Data e hora
+    numero_lote = db.Column(db.String(100), nullable=False)  # Número do lote
+    qr_code_path = db.Column(db.String(200), nullable=True)  # Caminho para o QR code
+
+
+def gerar_qr_code_palete(palete):
+    os.makedirs('static/qr_codes_paletes', exist_ok=True)
+    conteudo = (
+        f"Palete Nº: {palete.id}\n"
+        f"Data de Entrega: {palete.data_entrega}\n"
+        f"OP: {palete.op}\n"
+        f"Referência: {palete.referencia}\n"
+        f"Nome do Produto: {palete.nome_produto}\n"
+        f"Medida: {palete.medida}\n"
+        f"Cor do Botão: {palete.cor_botao}\n"
+        f"Cor do Ribete: {palete.cor_ribete}\n"
+        f"Leva Embalagem: {'Sim' if palete.leva_embalagem else 'Não'}\n"
+        f"Quantidade: {palete.quantidade}\n"
+        f"Data e Hora: {palete.data_hora}\n"
+        f"Número do Lote: {palete.numero_lote}"
+    )
+
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(conteudo)
+    qr.make(fit=True)
+
+    img = qr.make_image(fill_color="black", back_color="white")
+    qr_code_path = f"static/qr_codes_paletes/qr_palete_{palete.id}.png"
+    img.save(qr_code_path)
+
+    return qr_code_path
+
+
+
+
+       
+       
+# Rota para listar todas as paletes
 @app.route('/paletes', methods=['GET'])
 def get_paletes():
-    paletes = Palete.query.all()
-    output = []
-    for p in paletes:
-        produtos = json.loads(p.produtos) if p.produtos else []
-        output.append({
-            'id': p.id,
-            'numero_palete': p.numero_palete,
-            'produtos': produtos
-        })
-    print(f"GET /paletes - {len(paletes)} paletes encontradas")
-    return jsonify(output)
+    try:
+        # Obter todas as paletes do banco de dados
+        paletes = Palete.query.all()
+
+        # Verificar se existem paletes
+        if not paletes:
+            return jsonify({'message': 'Nenhuma palete encontrada.'}), 404
+
+        # Preparar os dados para resposta
+        output = [
+            {
+                'data_entrega': p.data_entrega,
+                'op': p.op,
+                'referencia': p.referencia,
+                'nome_produto': p.nome_produto,
+                'medida': p.medida,
+                'cor_botao': p.cor_botao,
+                'cor_ribete': p.cor_ribete,
+                'leva_embalagem': p.leva_embalagem,
+                'quantidade': p.quantidade,
+                'data_hora': p.data_hora,
+                'numero_lote': p.numero_lote,
+                'qr_code_path': p.qr_code_path,
+            }
+            for p in paletes
+        ]
+
+        # Log para depuração
+        print(f"GET /paletes - {len(paletes)} paletes encontradas")
+
+        # Retornar a resposta com os dados
+        return jsonify(output), 200
+
+    except Exception as e:
+        # Log de erro e resposta para o cliente
+        print(f"Erro ao obter paletes: {e}")
+        return jsonify({'message': 'Erro ao obter paletes.', 'details': str(e)}), 500
+
+
 
 
 # Rota para adicionar palete
@@ -337,19 +444,51 @@ def get_paletes():
 def add_palete():
     try:
         data = request.get_json()
-        if 'numero_palete' not in data or 'produtos' not in data:
-            return jsonify({'message': 'Campos obrigatórios ausentes'}), 400
+        
+        # Validar os campos obrigatórios
+        required_fields = ['data_entrega', 'op', 'referencia', 'nome_produto', 
+                           'medida', 'cor_botao', 'cor_ribete', 
+                           'leva_embalagem', 'quantidade', 'data_hora', 'numero_lote']
+        missing_fields = [field for field in required_fields if field not in data or data[field] is None]
+        if missing_fields:
+            return jsonify({'message': f'Campos obrigatórios ausentes: {", ".join(missing_fields)}'}), 400
+        
+        # Converter data_hora para datetime
+        try:
+            data_hora = datetime.fromisoformat(data['data_hora'])  # Converte o valor para um objeto datetime
+        except ValueError:
+            return jsonify({'message': 'Formato inválido para data e hora.'}), 400
 
+        # Criar a nova palete
         nova_palete = Palete(
-            numero_palete=data['numero_palete'],
-            produtos=json.dumps(data['produtos'])
+            data_entrega=data['data_entrega'],
+            op=data['op'],
+            referencia=data['referencia'],
+            nome_produto=data['nome_produto'],
+            medida=data['medida'],
+            cor_botao=data['cor_botao'],
+            cor_ribete=data['cor_ribete'],
+            leva_embalagem=data['leva_embalagem'],
+            quantidade=int(data['quantidade']),
+            data_hora=data_hora,  # Agora é um objeto datetime
+            numero_lote=data['numero_lote'],
         )
+        
         db.session.add(nova_palete)
         db.session.commit()
-        return jsonify({'message': 'Palete adicionada com sucesso!'}), 201
+
+        return jsonify({'message': 'Palete adicionada com sucesso!', 'id': nova_palete.id}), 201
     except Exception as e:
+        db.session.rollback()
         print(f"Erro ao adicionar palete: {e}")
-        return jsonify({'message': 'Erro ao adicionar palete', 'details': str(e)}), 500
+        return jsonify({'message': 'Erro ao adicionar palete.', 'details': str(e)}), 500
+
+
+
+
+
+
+
         
 # Rota para remover palete
 @app.route('/paletes/<int:id>', methods=['DELETE'])
@@ -360,14 +499,16 @@ def delete_palete(id):
         if not palete:
             return jsonify({'message': 'Palete não encontrada'}), 404
 
-        # Remover a palete do banco de dados
+        # Remover a palete da base de dados
         db.session.delete(palete)
         db.session.commit()
 
         return jsonify({'message': 'Palete removida com sucesso!'}), 200
     except Exception as e:
+        db.session.rollback()
         print(f"Erro ao remover palete: {e}")
         return jsonify({'message': 'Erro ao remover palete', 'details': str(e)}), 500
+
     
 
 
