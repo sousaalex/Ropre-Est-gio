@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestão de Fábrica</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="/static/css/styles.css">
+
+</head>
+<body>
+    <div class="container mt-5">
+        <h1 class="text-center">Gestão de Fábrica</h1>
+        <ul class="nav nav-tabs" id="tabs">
+            <li class="nav-item">
+                <a class="nav-link active" data-bs-toggle="tab" href="#tab-trabalhadores">Trabalhadores</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#tab-paletes">Paletes</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#tab-tarefas">Tarefas Concluídas</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#tab-maquinas">Máquinas</a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-bs-toggle="tab" href="#tab-nao-planejadas">Tarefas Não Planejadas</a>
+            </li>
+        </ul>
+        <div class="tab-content mt-4">
+            <!-- Trabalhadores -->
+            <div class="tab-pane fade show active" id="tab-trabalhadores">
+                <h3>Lista de Trabalhadores</h3>
+                <ul id="lista-trabalhadores"></ul>
+
+                <div class="d-flex align-items-center mb-3">
+                    <!-- Campo Nome -->
+                    <div class="me-3" style="flex: 1;">
+                        <label for="nome-trabalhador">Nome:</label>
+                        <input type="text" id="nome-trabalhador" class="form-control" placeholder="Nome do trabalhador">
+                    </div>
+                    
+                    <!-- Campo Seção -->
+                    <div style="flex: 1;">
+                        <label for="secao-trabalhador">Secção do Trabalhador:</label>
+                        <select id="secao-trabalhador" class="form-control">
+                            <option value="" disabled selected>Selecione uma seção  ⮟ </option>
+                            <option value="Acabamento">Acabamento</option>
+                            <option value="Controle de Qualidade">Controle de Qualidade</option>
+                            <option value="Serigrafia">Serigrafia</option>
+                            <option value="Confeção">Confeção</option>
+                            <option value="Sublimação">Sublimação</option>
+                            <option value="Corte">Corte</option>
+                            <option value="Cola">Cola</option>
+                        </select>
+                    </div>
+                </div>
+
+                <label>
+                    <input type="checkbox" id="is-chefe"> Definir como Chefe
+                </label>
+                
+
+                    <button class="btn btn-primary" onclick="adicionarTrabalhador()">Adicionar Trabalhador</button>
+               
+
+                <div id="mensagem-sucesso" style="display: none; color: green; margin-bottom: 10px;"></div>
+    
+            </div>
+
+            
+            <!-- Paletes -->
+            <div class="tab-pane fade" id="tab-paletes">
+            
+                <h3>Paletes Registradas</h3>
+                <ul id="lista-paletes"></ul>
+            
+                <h3>Adicionar Palete</h3>
+                <div class="d-flex align-items-center mb-3">
+                    <!-- Campo Número da Palete -->
+                    <div class="me-3" style="flex: 1;">
+                        <label for="numero-palete">Número da Palete:</label>
+                        <input type="text" id="numero-palete" class="form-control" placeholder="Número da Palete">
+                    </div>
+            
+                    <!-- Campo Produtos -->
+                    <div style="flex: 2;">
+                        <label for="produtos-palete">Produtos:</label>
+                        <input type="text" id="produtos-palete" class="form-control" placeholder="Produtos">
+                    </div>
+                </div>
+            
+                <!-- Botão para adicionar -->
+                <div>
+                    <button class="btn btn-success mb-3" onclick="adicionarPalete()">Adicionar Palete</button>
+                </div>
+            
+                <!-- Mensagem de sucesso para paletes -->
+                <div id="mensagem-sucesso-palete" style="display: none; color: green; margin-bottom: 10px;"></div>
+            </div>
+            
+            <!-- Tarefas Concluídas -->
+            <div class="tab-pane fade" id="tab-tarefas">
+                <h3>Tarefas Concluídas</h3>
+                <button class="btn btn-primary mb-3" onclick="listarTarefas()">Atualizar Lista</button>
+                <ul id="lista-tarefas"></ul>
+            </div>
+            <!-- Máquinas -->
+            <div class="tab-pane fade" id="tab-maquinas">
+                <h3>Máquinas</h3>
+                <p>Em breve...</p>
+            </div>
+            <!-- Tarefas Não Planejadas -->
+            <div class="tab-pane fade" id="tab-nao-planejadas">
+                <h3>Tarefas Não Planejadas</h3>
+                <p>Em breve...</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="chefes" class="tab-pane fade">
+        <h3>Autenticação de Chefe</h3>
+        <div class="mb-3">
+            <label for="id-chefe">ID do Chefe:</label>
+            <input type="number" id="id-chefe" class="form-control mb-2" placeholder="Insira o ID do Chefe" />
+        </div>
+        <div class="mb-3">
+            <label for="senha-chefe">Senha:</label>
+            <input type="password" id="senha-chefe" class="form-control mb-2" placeholder="Insira a senha" />
+        </div>
+        <button class="btn btn-primary" onclick="autenticarChefe()">Autenticar</button>
+        <div id="mensagem-autenticacao" style="margin-top: 10px;"></div>
+    </div>
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="/static/js/app.js"></script>
+</body>
+</html>
