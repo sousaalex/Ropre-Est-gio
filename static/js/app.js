@@ -202,15 +202,48 @@ function adicionarPalete() {
             }
             return response.json();
         })
-        .then((data) => {
-            alert("Palete adicionada com sucesso!");
-            listarPaletes(); // Atualiza a lista
+        .then(data => {
+            listarPaletes(); // Atualiza a lista após adicionar
+
+            // Exibe mensagem de sucesso no modal
+            const mensagemSucesso = document.getElementById("mensagem-sucesso-add-palete");
+            if (mensagemSucesso) {
+                mensagemSucesso.textContent = data.message || "Palete adicionada com sucesso!";
+                mensagemSucesso.style.display = "block"; // Mostra a mensagem
+                mensagemSucesso.style.visibility = "visible"; // Garante visibilidade
+                mensagemSucesso.style.opacity = 1; // Garante opacidade máxima
+
+                // Esconde a mensagem após 3 segundos
+                setTimeout(() => {
+                    mensagemSucesso.style.display = "none"; // Oculta o elemento
+                }, 3000);
+            } else {
+                console.error("Elemento de mensagem de sucesso não encontrado.");
+            }
+
+            // Limpa os campos do formulário para adicionar uma nova palete
+            document.getElementById("form-adicionar-palete").reset();
+
+            // Reatualiza a data e hora
+            const dataHoraInput = document.getElementById("data-hora-palete");
+            if (dataHoraInput) {
+                const agora = new Date();
+                const ano = agora.getFullYear();
+                const mes = String(agora.getMonth() + 1).padStart(2, '0');
+                const dia = String(agora.getDate()).padStart(2, '0');
+                const horas = String(agora.getHours()).padStart(2, '0');
+                const minutos = String(agora.getMinutes()).padStart(2, '0');
+                const dataHoraFormatada = `${ano}-${mes}-${dia}T${horas}:${minutos}`;
+                dataHoraInput.value = dataHoraFormatada; // Atualiza o campo
+            }
         })
         .catch((error) => {
             console.error("Erro ao adicionar palete:", error);
             alert(`Erro: ${error.message}`);
         });
 }
+
+
 
 
 
@@ -229,12 +262,9 @@ function limparFormularioPalete() {
 
 
 
-// Remover Palete
 function removerPalete(id) {
     if (confirm("Tem certeza que deseja remover esta palete?")) {
-        fetch(`${API_URL}/paletes/${id}`, {
-            method: "DELETE",
-        })
+        fetch(`${API_URL}/paletes/${id}`, { method: "DELETE" })
             .then(response => {
                 if (!response.ok) {
                     return response.json().then(err => {
@@ -244,12 +274,32 @@ function removerPalete(id) {
                 return response.json();
             })
             .then(data => {
-                alert(data.message || "Palete removida com sucesso!");
                 listarPaletes(); // Atualiza a lista de paletes
+
+                // Exibe mensagem de sucesso
+                const mensagemSucesso = document.getElementById("mensagem-sucesso-palete");
+                if (mensagemSucesso) {
+                    mensagemSucesso.textContent = data.message || "Palete removida com sucesso!";
+                    mensagemSucesso.style.display = "block"; // Mostra o elemento
+                    mensagemSucesso.style.visibility = "visible"; // Garante que é visível
+                    mensagemSucesso.style.opacity = 1; // Garante opacidade máxima
+
+                    // Esconde a mensagem após 3 segundos
+                    setTimeout(() => {
+                        mensagemSucesso.style.display = "none"; // Oculta o elemento
+                    }, 3000);
+                } else {
+                    console.error("Elemento de mensagem de sucesso não encontrado.");
+                }
             })
-            .catch(error => console.error("Erro ao remover palete:", error.message));
+            .catch(error => {
+                console.error("Erro ao remover palete:", error);
+                alert("Ocorreu um erro ao remover a palete. Tente novamente.");
+            });
     }
 }
+
+
 
 
 
@@ -265,35 +315,37 @@ function listarPaletes() {
             data.forEach(palete => {
                 // Cria um item da lista para a palete
                 const item = document.createElement("li");
+                item.className = "list-group-item"; // Classe para estilização básica
+
+                // Cria o conteúdo do item com as informações da palete
                 item.innerHTML = `
-                    <strong>Data de Entrega:</strong> ${palete.data_entrega} 
-                    <strong>OP:</strong> ${palete.op} 
-                    <strong>Referência:</strong> ${palete.referencia} 
-                    <strong>Nome do Produto:</strong> ${palete.nome_produto} 
-                    <strong>Medida:</strong> ${palete.medida} 
-                    <strong>Cor do Botão:</strong> ${palete.cor_botao} 
-                    <strong>Cor do Ribete:</strong> ${palete.cor_ribete}
-                    <strong>Leva Embalagem:</strong> ${palete.leva_embalagem} 
-                    <strong>Quantidade:</strong> ${palete.quantidade} 
-                    <strong>Data e Hora:</strong> ${palete.data_hora} 
+                    <strong>ID:</strong> ${palete.id}<br>
+                    <strong>Data de Entrega:</strong> ${palete.data_entrega}<br>
+                    <strong>OP:</strong> ${palete.op}<br>
+                    <strong>Referência:</strong> ${palete.referencia}<br>
+                    <strong>Nome do Produto:</strong> ${palete.nome_produto}<br>
+                    <strong>Medida:</strong> ${palete.medida}<br>
+                    <strong>Cor do Botão:</strong> ${palete.cor_botao}<br>
+                    <strong>Cor do Ribete:</strong> ${palete.cor_ribete}<br>
+                    <strong>Leva Embalagem:</strong> ${palete.leva_embalagem ? "Sim" : "Não"}<br>
+                    <strong>Quantidade:</strong> ${palete.quantidade}<br>
+                    <strong>Data e Hora:</strong> ${palete.data_hora}<br>
                     <strong>Número do Lote:</strong> ${palete.numero_lote}
                 `;
 
-                // Cria o botão de remover
+                // Adiciona botão de remover
                 const botaoRemover = document.createElement("button");
                 botaoRemover.textContent = "Remover";
                 botaoRemover.className = "btn btn-danger btn-sm ms-2";
                 botaoRemover.onclick = () => removerPalete(palete.id);
-
-                // Adiciona o botão ao item da lista
                 item.appendChild(botaoRemover);
 
-                // Adiciona o item à lista de paletes
-                lista.appendChild(item);
+                lista.appendChild(item); // Adiciona o item à lista
             });
         })
         .catch(error => console.error("Erro ao listar paletes:", error));
 }
+
 
 
 
@@ -306,6 +358,29 @@ document.addEventListener("DOMContentLoaded", listarPaletes);
 document.addEventListener("DOMContentLoaded", function () {
     // Configurar evento para carregar dados ao mudar de aba
     const tabs = document.querySelectorAll('[data-bs-toggle="tab"]');
+    const dataHoraInput = document.getElementById("data-hora-palete");
+
+    // Função para atualizar o campo de data e hora
+    function atualizarDataHora() {
+        const dataHoraInput = document.getElementById("data-hora-palete");
+        if (dataHoraInput) {
+            const agora = new Date();
+            const ano = agora.getFullYear();
+            const mes = String(agora.getMonth() + 1).padStart(2, '0'); // Adiciona zero à esquerda se necessário
+            const dia = String(agora.getDate()).padStart(2, '0');
+            const horas = String(agora.getHours()).padStart(2, '0');
+            const minutos = String(agora.getMinutes()).padStart(2, '0');
+
+            // Formata no padrão yyyy-MM-ddTHH:mm
+            const dataHoraFormatada = `${ano}-${mes}-${dia}T${horas}:${minutos}`;
+            dataHoraInput.value = dataHoraFormatada; // Preenche o campo
+        }
+    }
+
+    // Atualiza o campo "Data e Hora" em tempo real a cada segundo
+    setInterval(atualizarDataHora, 1000);
+
+    
 
     tabs.forEach(tab => {
         tab.addEventListener("shown.bs.tab", function (event) {

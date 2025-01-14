@@ -4,6 +4,10 @@ from flask_cors import CORS
 from datetime import datetime, timezone
 from werkzeug.security import generate_password_hash, check_password_hash
 from PIL import Image, ImageDraw, ImageFont
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.units import cm
+from reportlab.lib.utils import ImageReader
 import re  # Importar o módulo de expressões regulares
 import os
 import json
@@ -123,17 +127,7 @@ class Trabalhador(db.Model):
 
 
 
-# Modelo RegistroTrabalho
-class RegistroTrabalho(db.Model):
-    __tablename__ = 'registro_trabalho'
-    id = db.Column(db.Integer, primary_key=True)
-    trabalhador_id = db.Column(db.Integer, db.ForeignKey('trabalhador.id'), nullable=False)
-    palete_id = db.Column(db.Integer, db.ForeignKey('palete.id'), nullable=False)
-    horario_inicio = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
-    horario_fim = db.Column(db.DateTime, nullable=True)
 
-    trabalhador = db.relationship('Trabalhador', backref=db.backref('registros', lazy=True))
-    palete = db.relationship('Palete', backref=db.backref('registros', lazy=True))
 
 # Criar tabelas automaticamente
 with app.app_context():
@@ -273,6 +267,354 @@ def delete_trabalhador(id):
 
 
     
+
+
+
+
+
+    
+
+
+
+
+
+       # Modelo Palete
+# Definição do modelo Palete antes de RegistroTrabalho
+class Palete(db.Model):
+    __tablename__ = 'palete'
+    id = db.Column(db.Integer, primary_key=True, autoincrement=True)
+    data_entrega = db.Column(db.String(100), nullable=False)
+    op = db.Column(db.String(100), nullable=False)
+    referencia = db.Column(db.String(100), nullable=False)
+    nome_produto = db.Column(db.String(100), nullable=False)
+    medida = db.Column(db.String(100), nullable=False)
+    cor_botao = db.Column(db.String(100), nullable=False)
+    cor_ribete = db.Column(db.String(100), nullable=False)
+    leva_embalagem = db.Column(db.Boolean, nullable=False)
+    quantidade = db.Column(db.Integer, nullable=False)
+    data_hora = db.Column(db.DateTime, nullable=False)
+    numero_lote = db.Column(db.String(100), nullable=False)
+    qr_code_path = db.Column(db.String(200), nullable=True)
+
+    def __repr__(self):
+        return f"<Palete {self.id}, Produto: {self.nome_produto}>"
+
+
+
+
+    # Agora o RegistroTrabalho pode referenciar Palete
+class RegistroTrabalho(db.Model):
+    __tablename__ = 'registro_trabalho'
+    id = db.Column(db.Integer, primary_key=True)
+    trabalhador_id = db.Column(db.Integer, db.ForeignKey('trabalhador.id'), nullable=False)
+    palete_id = db.Column(db.Integer, db.ForeignKey('palete.id'), nullable=False)
+    horario_inicio = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    horario_fim = db.Column(db.DateTime, nullable=True)
+
+    trabalhador = db.relationship('Trabalhador', backref=db.backref('registros', lazy=True))
+    palete = db.relationship('Palete', backref=db.backref('registros', lazy=True))
+
+    def __repr__(self):
+        return f"<RegistroTrabalho ID: {self.id}, Trabalhador ID: {self.trabalhador_id}>"
+
+
+# Função para gerar QR code da palete
+def gerar_qr_code_palete(palete):
+    # Certifica-se de que o diretório de QR codes existe
+    os.makedirs('static/qr_codes_paletes', exist_ok=True)
+
+    # Conteúdo do QR Code com os dados da palete
+    conteudo = (
+        f"ID: {palete.id}\n"
+        f"Data de Entrega: {palete.data_entrega}\n"
+        f"OP: {palete.op}\n"
+        f"Referência: {palete.referencia}\n"
+        f"Nome do Produto: {palete.nome_produto}\n"
+        f"Medida: {palete.medida}\n"
+        f"Cor do Botão: {palete.cor_botao}\n"
+        f"Cor do Ribete: {palete.cor_ribete}\n"
+        f"Leva Embalagem: {'Sim' if palete.leva_embalagem else 'Não'}\n"
+        f"Quantidade: {palete.quantidade}\n"
+        f"Data e Hora: {palete.data_hora}\n"
+        f"Número do Lote: {palete.numero_lote}"
+    )
+
+    # Gera o QR Code
+    qr = qrcode.QRCode(
+        version=1,
+        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        box_size=10,
+        border=4,
+    )
+    qr.add_data(conteudo)
+    qr.make(fit=True)
+    img = qr.make_image(fill_color="black", back_color="white")
+
+    # Caminho para salvar o QR Code
+    qr_code_path = f"static/qr_codes_paletes/qr_palete_{palete.id}.png"
+    img.save(qr_code_path)
+
+    return qr_code_path
+
+
+
+
+       
+       
+# Rota para listar todas as paletes
+@app.route('/paletes', methods=['GET'])
+def get_paletes():
+    try:
+        # Obter todas as paletes do banco de dados
+        paletes = Palete.query.all()
+
+        # Verificar se existem paletes
+        if not paletes:
+            return jsonify({'message': 'Nenhuma palete encontrada.'}), 404
+
+        # Preparar os dados para resposta
+        output = [
+            {
+                'id': p.id,
+                'data_entrega': p.data_entrega,
+                'op': p.op,
+                'referencia': p.referencia,
+                'nome_produto': p.nome_produto,
+                'medida': p.medida,
+                'cor_botao': p.cor_botao,
+                'cor_ribete': p.cor_ribete,
+                'leva_embalagem': p.leva_embalagem,
+                'quantidade': p.quantidade,
+                'data_hora': p.data_hora,
+                'numero_lote': p.numero_lote,
+                'qr_code_path': p.qr_code_path,
+            }
+            for p in paletes
+        ]
+
+        # Log para depuração
+        print(f"GET /paletes - {len(paletes)} paletes encontradas")
+
+        # Retornar a resposta com os dados
+        return jsonify(output), 200
+
+    except Exception as e:
+        # Log de erro e resposta para o cliente
+        print(f"Erro ao obter paletes: {e}")
+        return jsonify({'message': 'Erro ao obter paletes.', 'details': str(e)}), 500
+
+
+
+
+# Rota para adicionar palete com geração de QR code
+@app.route('/paletes', methods=['POST'])
+def add_palete():
+    try:
+        data = request.get_json()
+        
+        # Validar os campos obrigatórios
+        required_fields = ['data_entrega', 'op', 'referencia', 'nome_produto', 
+                           'medida', 'cor_botao', 'cor_ribete', 
+                           'leva_embalagem', 'quantidade', 'data_hora', 'numero_lote']
+        missing_fields = [field for field in required_fields if field not in data or data[field] is None]
+        if missing_fields:
+            return jsonify({'message': f'Campos obrigatórios ausentes: {", ".join(missing_fields)}'}), 400
+        
+        # Converter data_hora para datetime
+        try:
+            data_hora = datetime.fromisoformat(data['data_hora'])  # Converte o valor para um objeto datetime
+        except ValueError:
+            return jsonify({'message': 'Formato inválido para data e hora.'}), 400
+
+        # Criar a nova palete
+        nova_palete = Palete(
+            data_entrega=data['data_entrega'],
+            op=data['op'],
+            referencia=data['referencia'],
+            nome_produto=data['nome_produto'],
+            medida=data['medida'],
+            cor_botao=data['cor_botao'],
+            cor_ribete=data['cor_ribete'],
+            leva_embalagem=data['leva_embalagem'],
+            quantidade=int(data['quantidade']),
+            data_hora=data_hora,  # Agora é um objeto datetime
+            numero_lote=data['numero_lote'],
+        )
+        
+        db.session.add(nova_palete)
+        db.session.flush()  # Gera o ID para a nova palete sem fazer commit ainda
+
+        # Gerar QR Code com as informações da palete
+        qr_code_path = gerar_qr_code_palete(nova_palete)
+        nova_palete.qr_code_path = qr_code_path  # Atualiza o caminho do QR code na palete
+
+        #gerar PDF palete
+        pdf_path = gerar_folha_palete(nova_palete)
+
+
+        db.session.commit()
+
+        return jsonify({'message': 'Palete adicionada com sucesso!', 'id': nova_palete.id}), 201
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao adicionar palete: {e}")
+        return jsonify({'message': 'Erro ao adicionar palete.', 'details': str(e)}), 500
+
+
+
+@app.route('/pdfs/<filename>', methods=['GET'])
+def get_pdf(filename):
+    return send_from_directory('static/pdfs', filename)
+
+
+
+
+        
+# Rota para remover palete
+@app.route('/paletes/<int:id>', methods=['DELETE'])
+def delete_palete(id):
+    try:
+        # Buscar a palete pelo ID
+        palete = Palete.query.get(id)
+        if not palete:
+            return jsonify({'message': 'Palete não encontrada'}), 404
+
+        # Caminho do arquivo de QR Code associado
+        qr_code_path = os.path.join('static', 'qr_codes_paletes', f"qr_palete_{palete.id}.png")
+
+        # Remove o arquivo de QR Code, se existir
+        if os.path.exists(qr_code_path):
+            os.remove(qr_code_path)
+            print(f"QR Code removido: {qr_code_path}")
+        else:
+            print(f"QR Code não encontrado para exclusão: {qr_code_path}")
+
+
+             # Caminho do arquivo de PDF associado
+        pdf_path = os.path.join('static', 'pdfs', f"folha_palete_{palete.id}.pdf")
+
+        # Remover o arquivo de PDF, se existir
+        if os.path.exists(pdf_path):
+            os.remove(pdf_path)
+            print(f"PDF removido: {pdf_path}")
+        else:
+            print(f"PDF não encontrado para exclusão: {pdf_path}")
+
+        # Remover a palete da base de dados
+        db.session.delete(palete)
+        db.session.commit()
+
+        return jsonify({'message': 'Palete removida com sucesso!'}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"Erro ao remover palete: {e}")
+        return jsonify({'message': 'Erro ao remover palete', 'details': str(e)}), 500
+
+
+def gerar_folha_palete(palete):
+    try:
+        # Pasta onde os QR codes estão armazenados
+        qr_code_path = os.path.join('static', 'qr_codes_paletes', f"qr_palete_{palete.id}.png")
+
+        # Verificar se o QR code existe
+        if not os.path.exists(qr_code_path):
+            raise FileNotFoundError(f"QR Code não encontrado para a palete {palete.id}")
+
+        # Nome do arquivo PDF
+        output_pdf_path = f"static/pdfs/folha_palete_{palete.id}.pdf"
+
+        # Criar diretório para os PDFs, se necessário
+        os.makedirs("static/pdfs", exist_ok=True)
+
+        # Configuração do PDF
+        pdf = canvas.Canvas(output_pdf_path, pagesize=A4)
+        width, height = A4
+
+        # Adicionar QR code
+        qr_code_img = ImageReader(qr_code_path)
+        pdf.drawImage(qr_code_img, x=50, y=height - 200, width=150, height=150)
+
+        # Título
+        pdf.setFont("Helvetica-Bold", 16)
+        pdf.drawString(220, height - 50, "Folha de Palete")
+
+        # Informações da palete
+        pdf.setFont("Helvetica", 12)
+        y = height - 250  # Posição inicial
+        line_height = 20
+
+        dados = [
+            f"Data de Entrega: {palete.data_entrega}",
+            f"OP: {palete.op}",
+            f"Referência: {palete.referencia}",
+            f"Nome do Produto: {palete.nome_produto}",
+            f"Medida: {palete.medida}",
+            f"Cor do Botão: {palete.cor_botao}",
+            f"Cor do Ribete: {palete.cor_ribete}",
+            f"Leva Embalagem: {'Sim' if palete.leva_embalagem else 'Não'}",
+            f"Quantidade: {palete.quantidade}",
+            f"Data e Hora: {palete.data_hora}",
+            f"Número do Lote: {palete.numero_lote}",
+        ]
+
+        for dado in dados:
+            pdf.drawString(50, y, dado)
+            y -= line_height
+
+        # Seção de preenchimento manual
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(50, y, "Seções de destino inicial e próximas:")
+        y -= line_height
+
+        secoes = [
+            "Corte e vinco",
+            "Seção da cola",
+            "Acabamento",
+            "Confeção",
+            "Acabamento",
+        ]
+
+        pdf.setFont("Helvetica", 12)
+        for secao in secoes:
+            pdf.drawString(70, y, f"(   ) {secao}")
+            y -= line_height
+
+        # Finalizar o PDF
+        pdf.save()
+
+        print(f"PDF gerado com sucesso: {output_pdf_path}")
+        return output_pdf_path
+
+    except Exception as e:
+        print(f"Erro ao gerar folha da palete: {e}")
+        return None
+
+
+
+
+# Criar exemplo de palete
+palete_exemplo = Palete(
+    id=1,
+    data_entrega="2025-01-15",
+    op="1705",
+    referencia="6201 70",
+    nome_produto="Tapasois",
+    medida="130x70",
+    cor_botao="Preto",
+    cor_ribete="Preto",
+    leva_embalagem=True,
+    quantidade=500,
+    data_hora="2025-01-13T17:26",
+    numero_lote="14",
+)
+
+# Gerar PDF da palete
+gerar_folha_palete(palete_exemplo)
+    
+
+
+
+
 # Rota para listar todos os registros de trabalho
 @app.route('/registro_trabalho', methods=['GET'])
 def get_registro_trabalho():
@@ -335,185 +677,6 @@ def registro_trabalho():
         return jsonify({'message': 'Erro ao registrar trabalho', 'details': str(e)}), 500
 
 
-
-
-
-       # Modelo Palete
-class Palete(db.Model):
-    __tablename__ = 'palete'
-    __table_args__ = {'extend_existing': True}  # Permite redefinir a tabela
-
-    id = db.Column(db.Integer, primary_key=True)
-    data_entrega = db.Column(db.String(100), nullable=False)  # Data de entrega
-    op = db.Column(db.String(100), nullable=False)  # OP
-    referencia = db.Column(db.String(100), nullable=False)  # Referência
-    nome_produto = db.Column(db.String(100), nullable=False)  # Nome do produto
-    medida = db.Column(db.String(100), nullable=False)  # Medida
-    cor_botao = db.Column(db.String(100), nullable=False)  # Cor do botão
-    cor_ribete = db.Column(db.String(100), nullable=False)  # Cor do ribete
-    leva_embalagem = db.Column(db.Boolean, nullable=False)  # Leva embalagem (Sim/Não)
-    quantidade = db.Column(db.Integer, nullable=False)  # Quantidade
-    data_hora = db.Column(db.DateTime, nullable=False)  # Data e hora
-    numero_lote = db.Column(db.String(100), nullable=False)  # Número do lote
-    qr_code_path = db.Column(db.String(200), nullable=True)  # Caminho para o QR code
-
-
-def gerar_qr_code_palete(palete):
-    os.makedirs('static/qr_codes_paletes', exist_ok=True)
-    conteudo = (
-        f"Palete Nº: {palete.id}\n"
-        f"Data de Entrega: {palete.data_entrega}\n"
-        f"OP: {palete.op}\n"
-        f"Referência: {palete.referencia}\n"
-        f"Nome do Produto: {palete.nome_produto}\n"
-        f"Medida: {palete.medida}\n"
-        f"Cor do Botão: {palete.cor_botao}\n"
-        f"Cor do Ribete: {palete.cor_ribete}\n"
-        f"Leva Embalagem: {'Sim' if palete.leva_embalagem else 'Não'}\n"
-        f"Quantidade: {palete.quantidade}\n"
-        f"Data e Hora: {palete.data_hora}\n"
-        f"Número do Lote: {palete.numero_lote}"
-    )
-
-    qr = qrcode.QRCode(
-        version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
-        box_size=10,
-        border=4,
-    )
-    qr.add_data(conteudo)
-    qr.make(fit=True)
-
-    img = qr.make_image(fill_color="black", back_color="white")
-    qr_code_path = f"static/qr_codes_paletes/qr_palete_{palete.id}.png"
-    img.save(qr_code_path)
-
-    return qr_code_path
-
-
-
-
-       
-       
-# Rota para listar todas as paletes
-@app.route('/paletes', methods=['GET'])
-def get_paletes():
-    try:
-        # Obter todas as paletes do banco de dados
-        paletes = Palete.query.all()
-
-        # Verificar se existem paletes
-        if not paletes:
-            return jsonify({'message': 'Nenhuma palete encontrada.'}), 404
-
-        # Preparar os dados para resposta
-        output = [
-            {
-                'data_entrega': p.data_entrega,
-                'op': p.op,
-                'referencia': p.referencia,
-                'nome_produto': p.nome_produto,
-                'medida': p.medida,
-                'cor_botao': p.cor_botao,
-                'cor_ribete': p.cor_ribete,
-                'leva_embalagem': p.leva_embalagem,
-                'quantidade': p.quantidade,
-                'data_hora': p.data_hora,
-                'numero_lote': p.numero_lote,
-                'qr_code_path': p.qr_code_path,
-            }
-            for p in paletes
-        ]
-
-        # Log para depuração
-        print(f"GET /paletes - {len(paletes)} paletes encontradas")
-
-        # Retornar a resposta com os dados
-        return jsonify(output), 200
-
-    except Exception as e:
-        # Log de erro e resposta para o cliente
-        print(f"Erro ao obter paletes: {e}")
-        return jsonify({'message': 'Erro ao obter paletes.', 'details': str(e)}), 500
-
-
-
-
-# Rota para adicionar palete
-@app.route('/paletes', methods=['POST'])
-def add_palete():
-    try:
-        data = request.get_json()
-        
-        # Validar os campos obrigatórios
-        required_fields = ['data_entrega', 'op', 'referencia', 'nome_produto', 
-                           'medida', 'cor_botao', 'cor_ribete', 
-                           'leva_embalagem', 'quantidade', 'data_hora', 'numero_lote']
-        missing_fields = [field for field in required_fields if field not in data or data[field] is None]
-        if missing_fields:
-            return jsonify({'message': f'Campos obrigatórios ausentes: {", ".join(missing_fields)}'}), 400
-        
-        # Converter data_hora para datetime
-        try:
-            data_hora = datetime.fromisoformat(data['data_hora'])  # Converte o valor para um objeto datetime
-        except ValueError:
-            return jsonify({'message': 'Formato inválido para data e hora.'}), 400
-
-        # Criar a nova palete
-        nova_palete = Palete(
-            data_entrega=data['data_entrega'],
-            op=data['op'],
-            referencia=data['referencia'],
-            nome_produto=data['nome_produto'],
-            medida=data['medida'],
-            cor_botao=data['cor_botao'],
-            cor_ribete=data['cor_ribete'],
-            leva_embalagem=data['leva_embalagem'],
-            quantidade=int(data['quantidade']),
-            data_hora=data_hora,  # Agora é um objeto datetime
-            numero_lote=data['numero_lote'],
-        )
-        
-        db.session.add(nova_palete)
-        db.session.commit()
-
-        return jsonify({'message': 'Palete adicionada com sucesso!', 'id': nova_palete.id}), 201
-    except Exception as e:
-        db.session.rollback()
-        print(f"Erro ao adicionar palete: {e}")
-        return jsonify({'message': 'Erro ao adicionar palete.', 'details': str(e)}), 500
-
-
-
-
-
-
-
-        
-# Rota para remover palete
-@app.route('/paletes/<int:id>', methods=['DELETE'])
-def delete_palete(id):
-    try:
-        # Buscar a palete pelo ID
-        palete = Palete.query.get(id)
-        if not palete:
-            return jsonify({'message': 'Palete não encontrada'}), 404
-
-        # Remover a palete da base de dados
-        db.session.delete(palete)
-        db.session.commit()
-
-        return jsonify({'message': 'Palete removida com sucesso!'}), 200
-    except Exception as e:
-        db.session.rollback()
-        print(f"Erro ao remover palete: {e}")
-        return jsonify({'message': 'Erro ao remover palete', 'details': str(e)}), 500
-
-    
-
-
-
-
 @app.route('/chefes/definir_senha', methods=['POST'])
 def definir_senha_chefe():
     try:
@@ -565,6 +728,9 @@ def login_chefe():
     except Exception as e:
         print(f"Erro ao autenticar chefe: {e}")
         return jsonify({'message': 'Erro ao autenticar chefe.', 'details': str(e)}), 500
+
+
+
 
 
 

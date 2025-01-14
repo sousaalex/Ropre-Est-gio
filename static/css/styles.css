@@ -6,7 +6,7 @@
 /* Estilo para o botão Remover */
 .btn-sm {
     margin-left: 10px; /* Espaço entre o botão e o texto */
-    padding: 1px 3px; /* Ajusta o tamanho interno do botão */
+    padding: 5px 3px; /* Ajusta o tamanho interno do botão */
     font-size: 12px;   /* Reduz o tamanho do texto */
     border-radius: 3px; /* Ajusta as bordas arredondadas */
 }
@@ -26,3 +26,18 @@
 #lista-paletes li {
     margin-bottom: 10px;
 }
+
+
+
+.list-group-item {
+    position: relative; /* Define como um contêiner de referência para posicionamento */
+}
+
+.list-group-item button {
+    position: absolute; /* Posiciona o botão de forma independente */
+    top: 50%; /* Move para o centro vertical */
+    right: 200px; /* Alinha o botão à direita com um espaçamento de 10px */
+    transform: translateY(-50%); /* Centraliza verticalmente o botão em relação ao próprio tamanho */
+}
+
+
