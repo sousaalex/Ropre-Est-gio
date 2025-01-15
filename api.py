@@ -87,9 +87,13 @@ def criar_cartao(trabalhador_id, nome_trabalhador, secao, cor="white", pasta="tr
 
 
 
-@app.route('/cartoes/<filename>', methods=['GET'])
-def get_cartao(filename):
-    return send_from_directory('static/cartoes', filename)
+@app.route('/cartoes/<pasta>/<filename>', methods=['GET'])
+def get_cartao(pasta, filename):
+    # Certifique-se de que a pasta seja 'trabalhadores' ou 'chefes'
+    if pasta not in ['trabalhadores', 'chefes']:
+        return jsonify({"message": "Pasta inválida"}), 400
+    return send_from_directory(f'static/cartoes/{pasta}', filename)
+
 
 
 # Rota para o index.html
@@ -462,9 +466,9 @@ def add_palete():
 
 
 
-@app.route('/pdfs/<filename>', methods=['GET'])
+@app.route('/FolhaPalete/<filename>', methods=['GET'])
 def get_pdf(filename):
-    return send_from_directory('static/pdfs', filename)
+    return send_from_directory('static/FolhaPalete', filename)
 
 
 
@@ -491,7 +495,7 @@ def delete_palete(id):
 
 
              # Caminho do arquivo de PDF associado
-        pdf_path = os.path.join('static', 'pdfs', f"folha_palete_{palete.id}.pdf")
+        pdf_path = os.path.join('static', 'FolhaPalete', f"folha_palete_{palete.id}.pdf")
 
         # Remover o arquivo de PDF, se existir
         if os.path.exists(pdf_path):
@@ -521,10 +525,10 @@ def gerar_folha_palete(palete):
             raise FileNotFoundError(f"QR Code não encontrado para a palete {palete.id}")
 
         # Nome do arquivo PDF
-        output_pdf_path = f"static/pdfs/folha_palete_{palete.id}.pdf"
+        output_pdf_path = f"static/FolhaPalete/folha_palete_{palete.id}.pdf"
 
         # Criar diretório para os PDFs, se necessário
-        os.makedirs("static/pdfs", exist_ok=True)
+        os.makedirs("static/FolhaPalete", exist_ok=True)
 
         # Configuração do PDF
         pdf = canvas.Canvas(output_pdf_path, pagesize=A4)
@@ -532,15 +536,28 @@ def gerar_folha_palete(palete):
 
         # Adicionar QR code
         qr_code_img = ImageReader(qr_code_path)
-        pdf.drawImage(qr_code_img, x=50, y=height - 200, width=150, height=150)
+        pdf.drawImage(qr_code_img, x=173, y=height - 300, width=250, height=250)
 
         # Título
-        pdf.setFont("Helvetica-Bold", 16)
-        pdf.drawString(220, height - 50, "Folha de Palete")
+        # Define a fonte e o tamanho
+        pdf.setFont("Helvetica-Bold", 25)
+
+        # Texto e largura da página
+        texto = "Folha de Palete"
+        largura_pagina = 595.27
+
+        # Calcula a largura do texto
+        largura_texto = pdf.stringWidth(texto, "Helvetica-Bold", 25)
+
+        # Calcula a posição x centralizada
+        x = (largura_pagina - largura_texto) / 2
+
+        # Desenha o texto centralizado
+        pdf.drawString(x, height - 50, texto)
 
         # Informações da palete
         pdf.setFont("Helvetica", 12)
-        y = height - 250  # Posição inicial
+        y = height - 350  # Posição inicial
         line_height = 20
 
         dados = [
@@ -590,26 +607,6 @@ def gerar_folha_palete(palete):
         return None
 
 
-
-
-# Criar exemplo de palete
-palete_exemplo = Palete(
-    id=1,
-    data_entrega="2025-01-15",
-    op="1705",
-    referencia="6201 70",
-    nome_produto="Tapasois",
-    medida="130x70",
-    cor_botao="Preto",
-    cor_ribete="Preto",
-    leva_embalagem=True,
-    quantidade=500,
-    data_hora="2025-01-13T17:26",
-    numero_lote="14",
-)
-
-# Gerar PDF da palete
-gerar_folha_palete(palete_exemplo)
     
 
 
@@ -637,44 +634,80 @@ def registro_trabalho():
     try:
         data = request.get_json()
 
-        trabalhador = Trabalhador.query.filter_by(cartao_qr=data['cartao_qr']).first()
+        # Extração do ID do Trabalhador a partir do QR Code
+        trabalhador_info = data.get('trabalhador_qr')  # Conteúdo do QR Code do Trabalhador
+        if not trabalhador_info:
+            return jsonify({'message': 'QR Code do trabalhador não fornecido.'}), 400
+
+        # Extração do ID da Palete a partir do QR Code
+        palete_info = data.get('palete_qr')  # Conteúdo do QR Code da Palete
+        if not palete_info:
+            return jsonify({'message': 'QR Code da palete não fornecido.'}), 400
+
+        # Extrair ID do Trabalhador
+        try:
+            trabalhador_id = int(trabalhador_info.split(';')[0].replace('ID', '').strip())
+        except (IndexError, ValueError):
+            return jsonify({'message': 'QR Code do trabalhador inválido.'}), 400
+
+        # Validar Trabalhador
+        trabalhador = Trabalhador.query.get(trabalhador_id)
         if not trabalhador:
-            return jsonify({'message': 'Trabalhador não encontrado'}), 404
+            return jsonify({'message': f'Trabalhador com ID {trabalhador_id} não encontrado.'}), 404
 
-        
+        # Extrair ID da Palete
+        try:
+            palete_id = int(palete_info.split(';')[0].replace('ID', '').strip())
+        except (IndexError, ValueError):
+            return jsonify({'message': 'QR Code da palete inválido.'}), 400
 
+        # Validar Palete
+        palete = Palete.query.get(palete_id)
+        if not palete:
+            return jsonify({'message': f'Palete com ID {palete_id} não encontrada.'}), 404
+
+        # Verificar se já há um trabalho em andamento para o trabalhador
         registro_existente = RegistroTrabalho.query.filter_by(
             trabalhador_id=trabalhador.id,
             horario_fim=None
         ).first()
 
+        # Se houver um registro em andamento, finaliza o trabalho
         if registro_existente:
             registro_existente.horario_fim = datetime.now(timezone.utc)
             db.session.commit()
             return jsonify({
                 'registro_id': registro_existente.id,
                 'trabalhador': trabalhador.nome,
+                'palete': palete.nome_produto,
                 'horario_inicio': registro_existente.horario_inicio,
                 'horario_fim': registro_existente.horario_fim,
                 'message': 'Trabalho finalizado com sucesso.'
             }), 200
-        else:
-            novo_registro = RegistroTrabalho(
-                trabalhador_id=trabalhador.id,
-                horario_inicio=datetime.now(timezone.utc)
-            )
-            db.session.add(novo_registro)
-            db.session.commit()
-            return jsonify({
-                'registro_id': novo_registro.id,
-                'trabalhador': trabalhador.nome,
-                'horario_inicio': novo_registro.horario_inicio,
-                'horario_fim': None,
-                'message': 'Trabalho iniciado com sucesso.'
-            }), 201
+
+        # Caso contrário, cria um novo registro para iniciar o trabalho
+        novo_registro = RegistroTrabalho(
+            trabalhador_id=trabalhador.id,
+            palete_id=palete.id,
+            horario_inicio=datetime.now(timezone.utc)
+        )
+        db.session.add(novo_registro)
+        db.session.commit()
+
+        return jsonify({
+            'registro_id': novo_registro.id,
+            'trabalhador': trabalhador.nome,
+            'palete': palete.nome_produto,
+            'horario_inicio': novo_registro.horario_inicio,
+            'horario_fim': None,
+            'message': 'Trabalho iniciado com sucesso.'
+        }), 201
+
     except Exception as e:
         print(f"Erro ao registrar trabalho: {e}")
-        return jsonify({'message': 'Erro ao registrar trabalho', 'details': str(e)}), 500
+        db.session.rollback()
+        return jsonify({'message': 'Erro ao registrar trabalho.', 'details': str(e)}), 500
+
 
 
 @app.route('/chefes/definir_senha', methods=['POST'])

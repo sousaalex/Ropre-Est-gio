@@ -1,4 +1,8 @@
+
+console.log(typeof Html5Qrcode);
+
 const API_URL = "http://10.0.1.242:5000";
+
 
 // Listar Trabalhadores
 function listarTrabalhadores() {
@@ -11,23 +15,57 @@ function listarTrabalhadores() {
             data.forEach(trabalhador => {
                 // Cria um item da lista para o trabalhador
                 const item = document.createElement("li");
-                item.className = "list-group-item"; // Classe para estilização básica
+                item.className = "list-group-item d-flex justify-content-between align-items-center";
 
-                // Adiciona destaque se for chefe
-                if (trabalhador.chefe) { // Certifica-se de que é um chefe
-                    item.innerHTML = `<span style="font-weight: bold; color: black;">${trabalhador.nome} - Secção: ${trabalhador.secao} (chefe)</span>`;
-                } else {
-                    item.textContent = `${trabalhador.nome} - Secção: ${trabalhador.secao}`;
+                // Texto do trabalhador (à esquerda)
+                const trabalhadorInfo = document.createElement("span");
+                trabalhadorInfo.textContent = `${trabalhador.nome} - Secção: ${trabalhador.secao}`;
+                if (trabalhador.chefe) {
+                    trabalhadorInfo.innerHTML += ` <strong>(Chefe)</strong>`;
+                    trabalhadorInfo.style.fontWeight = "bold"; // Negrito para chefes
+                }
+                item.appendChild(trabalhadorInfo);
+
+                // Container para os botões (à direita)
+                const buttonContainer = document.createElement("div");
+                buttonContainer.className = "d-flex gap-2"; // Espaçamento horizontal entre os botões
+
+                // Botão de download do cartão de trabalhador
+                const botaoDownloadTrabalhador = document.createElement("button-trabalhadores");
+                botaoDownloadTrabalhador.onclick = () => {
+                    const timestamp = new Date().getTime();
+                    const linkTrabalhador = `${API_URL}/cartoes/trabalhadores/cartao_${trabalhador.id}.png?ts=${timestamp}`;
+                    document.title = `Download - Cartão Trabalhador (${trabalhador.nome})`; // Altera o título da aba
+                    window.open(linkTrabalhador, "_blank"); // Abre o cartão de trabalhador em uma nova aba
+                };
+                botaoDownloadTrabalhador.className = "btn btn-secondary btn-sm";
+                botaoDownloadTrabalhador.innerHTML = `<i class="bi bi-download"></i> Cartão Trabalhador`;
+                buttonContainer.appendChild(botaoDownloadTrabalhador);
+
+                // Botão de download do cartão de chefe (apenas para chefes)
+                if (trabalhador.chefe) {
+                    const botaoDownloadChefe = document.createElement("button-trabalhadores");
+                    botaoDownloadChefe.onclick = () => {
+                        const timestamp = new Date().getTime();
+                        const linkChefe = `${API_URL}/cartoes/chefes/cartao_${trabalhador.id}.png?ts=${timestamp}`;
+                        document.title = `Download - Cartão Chefe (${trabalhador.nome})`; // Altera o título da aba
+                        window.open(linkChefe, "_blank"); // Abre o cartão de chefe em uma nova aba
+                    };
+                    botaoDownloadChefe.className = "btn btn-warning btn-sm";
+                    botaoDownloadChefe.innerHTML = `<i class="bi bi-download"></i> Cartão Chefe`;
+                    buttonContainer.appendChild(botaoDownloadChefe);
                 }
 
-                // Adiciona botão de remover
-                const botaoRemover = document.createElement("button");
+                // Botão de remover
+                const botaoRemover = document.createElement("button-trabalhadores");
                 botaoRemover.textContent = "Remover";
-                botaoRemover.className = "btn btn-danger btn-sm ms-3";
+                botaoRemover.className = "btn btn-danger btn-sm";
                 botaoRemover.onclick = () => removerTrabalhador(trabalhador.id);
-                item.appendChild(botaoRemover);
+                buttonContainer.appendChild(botaoRemover);
 
-                lista.appendChild(item); // Adiciona o item à lista
+                // Adiciona o container de botões ao item
+                item.appendChild(buttonContainer);
+                lista.appendChild(item);
             });
         })
         .catch(error => console.error("Erro ao listar trabalhadores:", error));
@@ -333,10 +371,23 @@ function listarPaletes() {
                     <strong>Número do Lote:</strong> ${palete.numero_lote}
                 `;
 
+                // Cria o botão de download
+                const botaoDownload = document.createElement("button-2");
+                botaoDownload.onclick = () => {
+                    const link = `${API_URL}/FolhaPalete/folha_palete_${palete.id}.pdf`;
+                    window.open(link, "_blank"); // Abre o PDF em uma nova aba
+                };
+                botaoDownload.className = "btn btn-secondary btn-sm d-flex align-items-center";
+                botaoDownload.innerHTML = `
+                    <i class="bi bi-download"></i>
+                `;
+                // Adiciona o botão de download ao item
+                item.appendChild(botaoDownload);
+
                 // Adiciona botão de remover
                 const botaoRemover = document.createElement("button");
                 botaoRemover.textContent = "Remover";
-                botaoRemover.className = "btn btn-danger btn-sm ms-2";
+                botaoRemover.className = "btn btn-danger btn-sm ms-3";
                 botaoRemover.onclick = () => removerPalete(palete.id);
                 item.appendChild(botaoRemover);
 
@@ -430,4 +481,86 @@ function autenticarChefe() {
             mensagem.style.color = "red";
         });
 }
+
+
+// Inicializa o leitor de QR Code
+function startQRCodeScanner() {
+    const html5QrCode = new Html5Qrcode("reader"); // Div onde o scanner será exibido
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+    html5QrCode.start(
+        { facingMode: "environment" }, // Usa a câmera traseira
+        config,
+        (decodedText, decodedResult) => {
+            // Quando o QR Code for lido
+            document.getElementById("mensagem-qr").innerText = `QR Code Lido: ${decodedText}`;
+            console.log("Texto lido:", decodedText);
+
+            // Processa o texto lido do QR Code
+            processQRCode(decodedText);
+
+            // Parar o scanner automaticamente após a leitura
+            html5QrCode.stop().then(() => {
+                console.log("Scanner parado.");
+            }).catch(err => console.error("Erro ao parar scanner:", err));
+        },
+        (errorMessage) => {
+            // Quando não conseguir ler o QR Code
+            console.warn(`Erro ao ler QR Code: ${errorMessage}`);
+        }
+    ).catch(err => console.error("Erro ao iniciar o scanner:", err));
+}
+
+// Função para processar o texto lido do QR Code
+function processQRCode(decodedText) {
+    // Assume que o QR Code lido contém informações separadas por ";"
+    const parts = decodedText.split(";");
+    let trabalhadorQR = null;
+    let paleteQR = null;
+
+    // Identifica se é trabalhador ou palete com base no conteúdo
+    parts.forEach(part => {
+        if (part.startsWith("ID")) {
+            if (part.includes("Nome")) {
+                trabalhadorQR = decodedText; // QR Code do trabalhador
+            } else if (part.includes("Produto")) {
+                paleteQR = decodedText; // QR Code da palete
+            }
+        }
+    });
+
+    // Valida e envia os dados
+    if (trabalhadorQR && paleteQR) {
+        lerQRCode(trabalhadorQR, paleteQR);
+    } else {
+        alert("QR Code inválido ou incompleto. Tente novamente.");
+    }
+}
+
+// Função para enviar os dados lidos para a API
+function lerQRCode(trabalhadorQR, paleteQR) {
+    fetch(`${API_URL}/registro_trabalho`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+            trabalhador_qr: trabalhadorQR,
+            palete_qr: paleteQR
+        })
+    })
+        .then(response => response.json())
+        .then(data => {
+            // Exibe mensagem de sucesso ou erro no frontend
+            document.getElementById("mensagem-qr").innerText = data.message || "Erro ao processar.";
+            console.log("Resposta da API:", data);
+        })
+        .catch(error => {
+            console.error("Erro ao registrar trabalho:", error);
+            document.getElementById("mensagem-qr").innerText = "Erro ao registrar trabalho.";
+        });
+}
+
+// Adiciona o evento de clique ao botão de iniciar scanner
+document.getElementById("start-scanner").addEventListener("click", startQRCodeScanner);
 

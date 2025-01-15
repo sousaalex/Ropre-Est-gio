@@ -41,3 +41,16 @@
 }
 
 
+.list-group-item button-2 {
+    position: absolute; /* Posiciona o botão de forma independente */
+    top: 50%; /* Move para o centro vertical */
+    right: 150px; /* Alinha o botão à direita com um espaçamento de 10px */
+    transform: translateY(-50%); /* Centraliza verticalmente o botão em relação ao próprio tamanho */
+    padding: 5px 10px; /* Ajusta o tamanho interno do botão */
+    font-size: 14px;   /* Reduz o tamanho do texto */
+
+
+}
+
+
+
