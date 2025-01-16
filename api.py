@@ -14,7 +14,7 @@ import json
 import qrcode
 
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder="static")
 CORS(app, resources={r"/*": {"origins": "*"}})
 
 def gerar_qr_code(trabalhador_id):
@@ -773,6 +773,3 @@ def login_chefe():
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
-
-
-

@@ -196,12 +196,10 @@
                 <button class="btn btn-primary mb-3" onclick="listarTarefas()">Atualizar Lista</button>
                 <ul id="lista-tarefas"></ul>
             
+                <button id="start-scanner" class="btn btn-primary">Iniciar Scanner</button>
                 <div id="reader" style="width: 300px; height: 300px; margin: auto;"></div>
                 <div id="mensagem-qr" style="text-align: center; margin-top: 10px;"></div>
 
-            
-                <button id="start-scanner" class="btn btn-primary">Iniciar Scanner</button>
-            </div>
             
             <!-- Máquinas -->
             <div class="tab-pane fade" id="tab-maquinas">
@@ -231,7 +229,7 @@
     </div>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
-    <script src="https://unpkg.com/html5-qrcode/minified/html5-qrcode.min.js"></script>
+    <script src="/static/js/libs/html5-qrcode.min.js"></script>
     <script src="/static/js/app.js"></script>
 
 </body>
