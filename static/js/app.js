@@ -1,7 +1,7 @@
 
 
 
-const API_URL = "https://gestao-fabrica-mzc8rsgbr-tomas-pereiras-projects.vercel.app";
+const API_URL = "https://gestao-fabrica.vercel.app";
 
 
 // Listar Trabalhadores
