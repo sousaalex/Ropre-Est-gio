@@ -1,7 +1,7 @@
 
 
 
-const API_URL = "http://10.0.1.242:5000";
+const API_URL = "https://gestao-fabrica.vercel.app";
 
 
 // Listar Trabalhadores
