@@ -14,8 +14,8 @@ import json
 import qrcode
 
 
-app = Flask(__name__, static_folder="static")
-CORS(app, resources={r"/*": {"origins": "*"}})
+app = Flask(__name__)
+CORS(app)
 
 def gerar_qr_code(trabalhador_id):
     # Certifica-se de que o diretório para os QR Codes existe
@@ -85,6 +85,15 @@ def criar_cartao(trabalhador_id, nome_trabalhador, secao, cor="white", pasta="tr
 
 
 
+# Rota para o index.html
+@app.route('/')
+def index():
+    return send_from_directory('static', 'index.html')
+
+# Rota para outros arquivos estáticos (CSS, JS, etc.)
+@app.route('/static/<path:filename>')
+def static_files(filename):
+    return send_from_directory('static', filename)
 
 
 @app.route('/cartoes/<pasta>/<filename>', methods=['GET'])
@@ -96,15 +105,6 @@ def get_cartao(pasta, filename):
 
 
 
-# Rota para o index.html
-@app.route('/')
-def index():
-    return send_from_directory('static', 'index.html')
-
-# Rota para outros arquivos estáticos (CSS, JS, etc.)
-@app.route('/static/<path:filename>')
-def static_files(filename):
-    return send_from_directory('static', filename)
 
 # Configuração do banco de dados
 BASE_DIR = os.path.abspath(os.path.dirname(__file__))

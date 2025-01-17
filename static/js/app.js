@@ -1,7 +1,9 @@
 
 
 
-const API_URL = "https://gestao-fabrica.vercel.app";
+const API_URL = window.location.hostname === "localhost"
+  ? "http://10.0.1.242:5000" // IP do seu PC na rede
+  : "https://gestao-fabrica.vercel.app"; // URL do Vercel
 
 
 // Listar Trabalhadores
