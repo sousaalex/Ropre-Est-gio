@@ -1,12 +1,13 @@
-
-
+console.log("Hostname atual:", window.location.hostname);
 
 const API_URL =
-  window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+  window.location.hostname === "localhost" ||
+  window.location.hostname === "127.0.0.1" ||
+  window.location.hostname === "10.0.1.242" // Adiciona o IP do PC explicitamente
     ? "http://10.0.1.242:5000" // IP do seu PC na rede
     : "https://gestao-fabrica.vercel.app"; // URL do Vercel
 
-console.log(`API URL atual: ${API_URL}/trabalhadores`);
+console.log(`API_URL configurada: ${API_URL}`);
 
 
 
