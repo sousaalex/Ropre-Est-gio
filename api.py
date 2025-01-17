@@ -188,36 +188,7 @@ def add_trabalhador():
             return jsonify({'message': 'Erro ao criar diretórios.', 'details': str(e)}), 500
 
         # Gerar QR Code com informações detalhadas do trabalhador
-        try:
-            conteudo = (
-                f"ID: {trabalhador.id}\n"
-                f"Nome: {trabalhador.nome}\n"
-                f"Secção: {trabalhador.secao}\n"
-            )
-            qr = qrcode.QRCode(
-                version=1,
-                error_correction=qrcode.constants.ERROR_CORRECT_L,
-                box_size=10,
-                border=4,
-            )
-            qr.add_data(conteudo)
-            qr.make(fit=True)
-            img = qr.make_image(fill_color="black", back_color="white")
-            qr_code_path = f"static/qr_codes/qr_trabalhador_{trabalhador.id}.png"
-            img.save(qr_code_path)
-        except Exception as e:
-            print(f"Erro ao gerar QR Code: {e}")
-            return jsonify({'message': 'Erro ao gerar QR Code.', 'details': str(e)}), 500
-
-        # Criar cartão do trabalhador
-        try:
-            criar_cartao(trabalhador.id, trabalhador.nome, trabalhador.secao)
-            if is_chefe:
-                criar_cartao(trabalhador.id, trabalhador.nome, trabalhador.secao, cor="red", pasta="chefes")
-        except Exception as e:
-            print(f"Erro ao criar cartão: {e}")
-            return jsonify({'message': 'Erro ao criar cartão.', 'details': str(e)}), 500
-
+        
         db.session.commit()
 
         mensagem = 'Trabalhador e chefe de secção adicionados com sucesso!' if is_chefe else 'Trabalhador adicionado com sucesso!'
