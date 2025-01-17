@@ -165,38 +165,30 @@ def get_trabalhadores():
 def add_trabalhador():
     try:
         data = request.get_json()
-        print(f"Dados recebidos: {data}")  # Log dos dados recebidos
+        print(f"Dados recebidos no POST: {data}")  # Verifique os dados recebidos
         nome = data.get('nome')
         secao = data.get('secao')
         is_chefe = data.get('chefe', False)
 
         if not nome or not secao:
+            print("Erro: Nome ou seção ausentes.")
             return jsonify({'message': 'Nome e seção são obrigatórios.'}), 400
 
         # Criar trabalhador
         trabalhador = Trabalhador(nome=nome, secao=secao, chefe=is_chefe)
         db.session.add(trabalhador)
         db.session.flush()  # Gera o ID do trabalhador sem commit ainda
+        print(f"Trabalhador criado com ID: {trabalhador.id}")
 
-        # Certifica-se de que os diretórios existem
-        try:
-            os.makedirs('static/qr_codes', exist_ok=True)
-            os.makedirs('static/cartoes/trabalhadores', exist_ok=True)
-            os.makedirs('static/cartoes/chefes', exist_ok=True)
-        except Exception as e:
-            print(f"Erro ao criar diretórios: {e}")
-            return jsonify({'message': 'Erro ao criar diretórios.', 'details': str(e)}), 500
-
-        # Gerar QR Code com informações detalhadas do trabalhador
-        
         db.session.commit()
-
-        mensagem = 'Trabalhador e chefe de secção adicionados com sucesso!' if is_chefe else 'Trabalhador adicionado com sucesso!'
+        mensagem = 'Trabalhador adicionado com sucesso!'
+        print("Trabalhador adicionado com sucesso.")
         return jsonify({'message': mensagem, 'id': trabalhador.id}), 201
     except Exception as e:
         db.session.rollback()
-        print(f"Erro ao adicionar trabalhador: {e}")  # Log do erro
+        print(f"Erro no servidor ao adicionar trabalhador: {e}")  # Log do erro
         return jsonify({'message': 'Erro ao adicionar trabalhador.', 'details': str(e)}), 500
+
 
 
 
