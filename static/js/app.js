@@ -9,6 +9,63 @@ const API_URL =
 
 console.log(`API_URL configurada: ${API_URL}`);
 
+// Aguarda o carregamento completo do DOM
+document.addEventListener("DOMContentLoaded", () => {
+    const tipoUsuario = prompt("Digite o tipo de usuário (admin, chefe, funcionario):").toLowerCase();
+    definirLayout(tipoUsuario);
+    configurarScanner(tipoUsuario);
+});
+
+// Função para definir o layout com base no tipo de usuário
+function definirLayout(tipoUsuario) {
+    // Ocultar todos os layouts inicialmente
+    const layouts = ["layout-compartilhado", "funcionario-layout"];
+    layouts.forEach((id) => {
+        const layout = document.getElementById(id);
+        if (layout) layout.style.display = "none";
+    });
+
+    // Exibe o layout correspondente
+    if (tipoUsuario === "admin" || tipoUsuario === "chefe") {
+        document.getElementById("layout-compartilhado").style.display = "block";
+
+        // Esconde os elementos de scanner se for admin
+        if (tipoUsuario === "admin") {
+            const scannerElements = document.querySelectorAll("#start-scanner-compartilhado, #reader-compartilhado, #mensagem-qr");
+            scannerElements.forEach((el) => el.style.display = "none");
+        }
+    } else if (tipoUsuario === "funcionario") {
+        document.getElementById("funcionario-layout").style.display = "block";
+    } else {
+        console.error("Tipo de usuário inválido:", tipoUsuario);
+    }
+}
+
+// Função para configurar o scanner de QR Code
+function configurarScanner(tipoUsuario) {
+    let botaoScannerId = null;
+    let readerId = null;
+
+    if (tipoUsuario === "chefe") {
+        botaoScannerId = "start-scanner-compartilhado";
+        readerId = "reader-compartilhado";
+    } else if (tipoUsuario === "funcionario") {
+        botaoScannerId = "start-scanner-funcionario";
+        readerId = "reader-funcionario";
+    }
+
+    // Configurar scanner se os IDs forem válidos
+    if (botaoScannerId && readerId) {
+        const botaoScanner = document.getElementById(botaoScannerId);
+        if (botaoScanner) {
+            botaoScanner.addEventListener("click", () => {
+                startQRCodeScanner(readerId);
+            });
+        } else {
+            console.error(`Botão de scanner com ID '${botaoScannerId}' não encontrado.`);
+        }
+    }
+}
 
 
 // Listar Trabalhadores
@@ -493,23 +550,31 @@ function autenticarChefe() {
 
 
 // Inicializa o leitor de QR Code
-function startQRCodeScanner() {
-    const html5QrCode = new Html5Qrcode("reader");
+function startQRCodeScanner(readerId) {
+    const readerElement = document.getElementById(readerId);
+    if (!readerElement) {
+        console.error(`Elemento HTML com id=${readerId} não encontrado.`);
+        return;
+    }
+
+    const html5QrCode = new Html5Qrcode(readerId);
     const config = { fps: 10, qrbox: { width: 250, height: 250 } };
-    
-    // Inicia o scanner com a câmera traseira
-    html5QrCode.start(
-        { facingMode: "environment" }, // Envia 'user' para usar a câmera frontal
-        config,
-        (decodedText, decodedResult) => {
-            console.log("QR Code lido:", decodedText);
-            // Processar o texto lido aqui
-        },
-        (errorMessage) => {
-            console.warn("Erro ao ler QR Code:", errorMessage);
-        }
-    ).catch(err => console.error("Erro ao iniciar o scanner:", err));
+
+    html5QrCode
+        .start(
+            { facingMode: "environment" },//user-> camera frontal<->environment->camera traseira
+            config,
+            (decodedText) => {
+                console.log("QR Code lido:", decodedText);
+                alert(`QR Code lido: ${decodedText}`);
+            },
+            (errorMessage) => {
+                console.warn("Erro ao ler QR Code:", errorMessage);
+            }
+        )
+        .catch((err) => console.error("Erro ao iniciar o scanner:", err));
 }
+
 
 // Processar texto do QR Code lido
 function processQRCode(decodedText) {
@@ -517,7 +582,5 @@ function processQRCode(decodedText) {
     // Exemplo: Enviar para a API ou processar localmente
 }
 
-// Adiciona evento ao botão para iniciar o scanner
-document.getElementById("start-scanner").addEventListener("click", startQRCodeScanner);
 
 
