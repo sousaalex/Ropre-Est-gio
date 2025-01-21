@@ -21,15 +21,16 @@ app = Flask(__name__)
 CORS(app)
 
 # Conexão com o MongoDB
-MONGO_URI = "mongodb+srv://tomas_admin:04062008Tp@cluster0.mfo9s.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0"
-client = MongoClient(MONGO_URI)
-
-# Escolha o banco de dados e as coleções
-db = client['gestao_fabrica']
-trabalhadores_collection = db['trabalhadores']
-paletes_collection = db['paletes']
-registros_trabalho_collection = db['registros_trabalho']
-
+MONGO_URI = os.getenv("MONGO_URI")  # Obtém o URI do MongoDB a partir de variáveis de ambiente
+if MONGO_URI:
+    client = MongoClient(MONGO_URI)
+    db = client['gestao_fabrica']
+    trabalhadores_collection = db['trabalhadores']
+    paletes_collection = db['paletes']
+    registros_trabalho_collection = db['registros_trabalho']
+else:
+    client = None
+    print("Aviso: MongoDB não está configurado. As funcionalidades de banco de dados não estarão disponíveis.")
 
 def gerar_qr_code(trabalhador_id):
     # Certifica-se de que o diretório para os QR Codes existe
