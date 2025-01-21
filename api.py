@@ -110,6 +110,11 @@ def index():
 def no_favicon():
     return '', 204
 
+@app.route('/favicon.png')
+def no_favicon_png():
+    return '', 204
+
+
 
 # Rota para outros arquivos estáticos (CSS, JS, etc.)
 @app.route('/static/<path:filename>')
