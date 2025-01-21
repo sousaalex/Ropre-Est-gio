@@ -106,6 +106,11 @@ def index():
     # Especifica o diretório onde o index.html está localizado
     return send_from_directory('.', 'index.html')
 
+@app.route('/favicon.ico')
+def no_favicon():
+    return '', 204
+
+
 # Rota para outros arquivos estáticos (CSS, JS, etc.)
 @app.route('/static/<path:filename>')
 def static_files(filename):
