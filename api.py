@@ -102,7 +102,7 @@ def criar_cartao(trabalhador_id, nome_trabalhador, secao, cor="white", pasta="tr
 
 # Rota para o index.html
 @app.route('/')
-def index():
+def home():
     # Especifica o diretório onde o index.html está localizado
     return send_from_directory('.', 'index.html')
 
