@@ -16,13 +16,15 @@
       "dest": "/static/$1"
     },
     {
-      "src": "/",
-      "dest": "/index.html"
+      "src": "/favicon\\.(ico|png)",
+      "dest": "/favicon.ico"
     },
     {
       "src": "/(.*)",
       "dest": "api.py"
     }
-  ]
+  ],
+  "env": {
+    "PYTHONPATH": "."
+  }
 }
-

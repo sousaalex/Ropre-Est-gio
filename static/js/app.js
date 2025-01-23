@@ -5,16 +5,67 @@ const API_URL =
   window.location.hostname === "127.0.0.1" ||
   window.location.hostname === "10.0.1.242" // Adiciona o IP do PC explicitamente
     ? "http://10.0.1.242:5000" // IP do seu PC na rede
-    : "https://gestao-fabrica.vercel.app"; // URL do Vercel
+    : "https://gestao-fabrica.vercel.app/"; // URL do Vercel
 
 console.log(`API_URL configurada: ${API_URL}`);
 
 // Aguarda o carregamento completo do DOM
 document.addEventListener("DOMContentLoaded", () => {
+    // Solicitar o tipo de usuário e configurar o layout
     const tipoUsuario = prompt("Digite o tipo de usuário (admin, chefe, funcionario):").toLowerCase();
     definirLayout(tipoUsuario);
     configurarScanner(tipoUsuario);
+
+    // Adicionar evento ao formulário para adicionar trabalhador
+    const formAdicionarTrabalhador = document.getElementById("form-adicionar-trabalhador");
+    if (formAdicionarTrabalhador) {
+        formAdicionarTrabalhador.addEventListener("submit", adicionarTrabalhador);
+        console.log("Evento de submit adicionado ao formulário.");
+    } else {
+        console.error("Formulário 'form-adicionar-trabalhador' não encontrado.");
+    }
+
+    // Lista trabalhadores e paletes ao carregar
+    listarTrabalhadores();
+
+    // Configurar evento para carregar dados ao mudar de aba
+    const tabs = document.querySelectorAll('[data-bs-toggle="tab"]');
+    tabs.forEach(tab => {
+        tab.addEventListener("shown.bs.tab", function (event) {
+            const targetId = event.target.getAttribute("href");
+
+            // Identifica qual aba foi ativada e chama a função correspondente
+            if (targetId === "#tab-trabalhadores") {
+                listarTrabalhadores();
+            } else if (targetId === "#tab-paletes") {
+                listarPaletes();
+            } else if (targetId === "#tab-tarefas") {
+                listarTarefas();
+            }
+        });
+    });
+
+    // Atualiza o campo "Data e Hora" em tempo real
+    const dataHoraInput = document.getElementById("data-hora-palete");
+    if (dataHoraInput) {
+        function atualizarDataHora() {
+            const agora = new Date();
+            const ano = agora.getFullYear();
+            const mes = String(agora.getMonth() + 1).padStart(2, '0');
+            const dia = String(agora.getDate()).padStart(2, '0');
+            const horas = String(agora.getHours()).padStart(2, '0');
+            const minutos = String(agora.getMinutes()).padStart(2, '0');
+
+            // Formata no padrão yyyy-MM-ddTHH:mm
+            const dataHoraFormatada = `${ano}-${mes}-${dia}T${horas}:${minutos}`;
+            dataHoraInput.value = dataHoraFormatada; // Preenche o campo
+        }
+
+        // Atualiza o campo "Data e Hora" a cada segundo
+        setInterval(atualizarDataHora, 1000);
+    }
 });
+
 
 // Função para definir o layout com base no tipo de usuário
 function definirLayout(tipoUsuario) {
@@ -139,58 +190,92 @@ function listarTrabalhadores() {
 
 
 
-// Adicionar Trabalhador
-function adicionarTrabalhador() {
+// Função para adicionar trabalhador
+function adicionarTrabalhador(event) {
+    if (event) {
+        event.preventDefault();
+    } else {
+        console.error("O evento não foi passado corretamente para a função adicionarTrabalhador.");
+        return;
+    }
+
     const nomeInput = document.getElementById("nome-trabalhador");
     const secaoSelect = document.getElementById("secao-trabalhador");
-    const isChefe = document.getElementById("is-chefe").checked; // Verifica se o checkbox está marcado
+    const isChefeCheckbox = document.getElementById("is-chefe");
 
-    const nome = nomeInput.value.trim();
-    const secao = secaoSelect.value;
+    const nome = nomeInput?.value.trim();
+    const secao = secaoSelect?.value;
+    const isChefe = isChefeCheckbox?.checked;
 
+    // Validação dos campos
     if (!nome) {
-        alert("Por favor, preencha o nome do trabalhador!");
+        exibirMensagem("Por favor, preencha o nome do trabalhador!", "erro");
         return;
     }
 
     if (!secao) {
-        alert("Por favor, selecione uma seção para o trabalhador!");
+        exibirMensagem("Por favor, selecione uma seção para o trabalhador!", "erro");
         return;
     }
 
-    // Inclui a informação de 'chefe' no corpo da requisição
+    // Desabilitar botão enquanto a requisição é feita
+    const botaoAdicionar = document.getElementById("botao-adicionar");
+    if (botaoAdicionar) {
+        botaoAdicionar.disabled = true;
+    }
+
+    // Enviar requisição à API
     fetch(`${API_URL}/trabalhadores`, {
         method: "POST",
         headers: { "Content-Type": "application/json; charset=utf-8" },
-        body: JSON.stringify({ nome, secao, chefe: isChefe }), // Adiciona 'chefe' aqui
+        body: JSON.stringify({ nome, secao, chefe: isChefe }),
     })
-        .then(response => {
+        .then((response) => {
+            if (botaoAdicionar) {
+                botaoAdicionar.disabled = false; // Reativar botão
+            }
             if (!response.ok) {
-                return response.json().then(err => {
+                return response.json().then((err) => {
                     throw new Error(err.message);
                 });
             }
             return response.json();
         })
-        .then(data => {
-            listarTrabalhadores(); // Atualiza a lista após adicionar
-            nomeInput.value = ""; // Limpa o campo de entrada
-            secaoSelect.value = ""; // Reseta a seleção
-            document.getElementById("is-chefe").checked = false; // Reseta o checkbox
-
-            // Mostrar mensagem temporária de sucesso
+        .then((data) => {
+            listarTrabalhadores(); // Atualiza a lista
+            limparFormulario();
+            
+            // Exibe a mensagem retornada pela API
             const mensagemSucesso = document.getElementById("mensagem-sucesso");
-            mensagemSucesso.textContent = data.message;
-            mensagemSucesso.style.display = "block";
-            setTimeout(() => {
-                mensagemSucesso.style.display = "none"; // Esconde após 3 segundos
-            }, 3000);
+            if (mensagemSucesso) {
+                mensagemSucesso.textContent = data.message;
+                mensagemSucesso.style.display = "block";
+                
+
+                // Esconde a mensagem após 3 segundos
+                setTimeout(() => {
+                    mensagemSucesso.style.display = "none";
+                }, 3000);
+            }
         })
-        .catch(error => {
+        .catch((error) => {
+            if (botaoAdicionar) {
+                botaoAdicionar.disabled = false;
+            }
             console.error("Erro ao adicionar trabalhador:", error.message);
-            alert(`Erro: ${error.message}`);
+            exibirMensagem(`Erro: ${error.message}`, "erro");
         });
 }
+
+// Função para limpar o formulário
+function limparFormulario() {
+    document.getElementById("nome-trabalhador").value = "";
+    document.getElementById("secao-trabalhador").value = "";
+    document.getElementById("is-chefe").checked = false;
+}
+
+
+
 
 
 // Remover Trabalhador
@@ -220,8 +305,7 @@ function removerTrabalhador(id) {
     }
 }
 
-// Carregar lista de trabalhadores ao carregar a página
-document.addEventListener("DOMContentLoaded", listarTrabalhadores);
+
 
 // Detectar Enter no campo de entrada
 document.getElementById("nome-trabalhador").addEventListener("keypress", function (event) {
@@ -468,52 +552,10 @@ function listarPaletes() {
 
 
 
-// Carregar lista de paletes ao carregar a aba
-document.addEventListener("DOMContentLoaded", listarPaletes);
 
 
-document.addEventListener("DOMContentLoaded", function () {
-    // Configurar evento para carregar dados ao mudar de aba
-    const tabs = document.querySelectorAll('[data-bs-toggle="tab"]');
-    const dataHoraInput = document.getElementById("data-hora-palete");
 
-    // Função para atualizar o campo de data e hora
-    function atualizarDataHora() {
-        const dataHoraInput = document.getElementById("data-hora-palete");
-        if (dataHoraInput) {
-            const agora = new Date();
-            const ano = agora.getFullYear();
-            const mes = String(agora.getMonth() + 1).padStart(2, '0'); // Adiciona zero à esquerda se necessário
-            const dia = String(agora.getDate()).padStart(2, '0');
-            const horas = String(agora.getHours()).padStart(2, '0');
-            const minutos = String(agora.getMinutes()).padStart(2, '0');
 
-            // Formata no padrão yyyy-MM-ddTHH:mm
-            const dataHoraFormatada = `${ano}-${mes}-${dia}T${horas}:${minutos}`;
-            dataHoraInput.value = dataHoraFormatada; // Preenche o campo
-        }
-    }
-
-    // Atualiza o campo "Data e Hora" em tempo real a cada segundo
-    setInterval(atualizarDataHora, 1000);
-
-    
-
-    tabs.forEach(tab => {
-        tab.addEventListener("shown.bs.tab", function (event) {
-            const targetId = event.target.getAttribute("href");
-
-            // Identifica qual aba foi ativada e chama a função correspondente
-            if (targetId === "#tab-trabalhadores") {
-                listarTrabalhadores();
-            } else if (targetId === "#tab-paletes") {
-                listarPaletes();
-            } else if (targetId === "#tab-tarefas") {
-                listarTarefas();
-            }
-        });
-    });
-});
 
 function autenticarChefe() {
     const idChefe = document.getElementById("id-chefe").value.trim();

@@ -17,9 +17,18 @@
     list-style-type: none; /* Remove os marcadores de lista, se preferir */
 }
 
-#mensagem-sucesso {
+.mensagem-sucesso {
+    color: green;
+    font-weight: bold;
     margin-top: 10px;
 }
+
+.mensagem-erro {
+    color: red;
+    font-weight: bold;
+    margin-top: 10px;
+}
+
 
 
 #lista-tarefas li,

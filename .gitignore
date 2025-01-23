@@ -1,0 +1,8 @@
+.env
+firebase_credentials.json
+__pycache__/
+*.pyc
+.vercel
+static/qr_codes/
+static/cartoes/
+static/FolhaPalete/
