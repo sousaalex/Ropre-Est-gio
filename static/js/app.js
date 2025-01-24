@@ -150,27 +150,7 @@ function listarTrabalhadores() {
                 const buttonContainer = document.createElement("div");
                 buttonContainer.className = "d-flex gap-2";
 
-                // Botão de download do cartão de trabalhador
-                const botaoDownloadTrabalhador = document.createElement("button-trabalhadores");
-                botaoDownloadTrabalhador.className = "btn btn-secondary btn-sm";
-                botaoDownloadTrabalhador.innerHTML = `<i class="bi bi-download"></i> Cartão Trabalhador`;
-                botaoDownloadTrabalhador.onclick = () => {
-                    const linkTrabalhador = `${API_URL}/cartoes/trabalhadores/cartao_${trabalhador.id}.png`;
-                    window.open(linkTrabalhador, "_blank");
-                };
-                buttonContainer.appendChild(botaoDownloadTrabalhador);
-
-                // Botão de download do cartão de chefe (apenas para chefes)
-                if (trabalhador.chefe) {
-                    const botaoDownloadChefe = document.createElement("button-trabalhadores");
-                    botaoDownloadChefe.className = "btn btn-warning btn-sm";
-                    botaoDownloadChefe.innerHTML = `<i class="bi bi-download"></i> Cartão Chefe`;
-                    botaoDownloadChefe.onclick = () => {
-                        const linkChefe = `${API_URL}/cartoes/chefes/cartao_${trabalhador.id}.png`;
-                        window.open(linkChefe, "_blank");
-                    };
-                    buttonContainer.appendChild(botaoDownloadChefe);
-                }
+                
 
                 // Botão de remover
                 const botaoRemover = document.createElement("button-trabalhadores");
@@ -521,18 +501,6 @@ function listarPaletes() {
                     <strong>Número do Lote:</strong> ${palete.numero_lote}
                 `;
 
-                // Cria o botão de download
-                const botaoDownload = document.createElement("button-2");
-                botaoDownload.onclick = () => {
-                    const link = `${API_URL}/FolhaPalete/folha_palete_${palete.id}.pdf`;
-                    window.open(link, "_blank"); // Abre o PDF em uma nova aba
-                };
-                botaoDownload.className = "btn btn-secondary btn-sm d-flex align-items-center";
-                botaoDownload.innerHTML = `
-                    <i class="bi bi-download"></i>
-                `;
-                // Adiciona o botão de download ao item
-                item.appendChild(botaoDownload);
 
                 // Adiciona botão de remover
                 const botaoRemover = document.createElement("button");
