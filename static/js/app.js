@@ -1,13 +1,13 @@
 console.log("Hostname atual:", window.location.hostname);
 
-const API_URL =
-  window.location.hostname === "localhost" ||
-  window.location.hostname === "127.0.0.1" ||
-  window.location.hostname === "10.0.1.242" // Adiciona o IP do PC explicitamente
-    ? "http://10.0.1.242:5000" // IP do seu PC na rede
-    : "https://gestao-fabrica.vercel.app/"; // URL do Vercel
+const API_URL = window.location.hostname.includes("localhost") || 
+                window.location.hostname.includes("127.0.0.1") ||
+                window.location.hostname.includes("10.0.1.242")
+  ? "http://10.0.1.242:5000" // URL do backend local
+  : `https://${window.location.hostname}/`; // URL do Vercel (produção ou preview)
 
 console.log(`API_URL configurada: ${API_URL}`);
+
 
 // Aguarda o carregamento completo do DOM
 document.addEventListener("DOMContentLoaded", () => {
