@@ -4,27 +4,16 @@
     {
       "src": "api.py",
       "use": "@vercel/python"
-    },
-    {
-      "src": "static/**/*",
-      "use": "@vercel/static"
     }
   ],
   "routes": [
-    {
-      "src": "/static/(.*)",
-      "dest": "/static/$1"
-    },
-    {
-      "src": "/favicon\\.(ico|png)",
-      "dest": "/favicon.ico"
-    },
     {
       "src": "/(.*)",
       "dest": "api.py"
     }
   ],
   "env": {
-    "PYTHONPATH": "."
+    "PYTHONPATH": ".",
+    "FIREBASE_CREDENTIALS": "@firebase_credentials"
   }
 }

@@ -15,9 +15,49 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 
 
+
 app = Flask(__name__)
 CORS(app)
 
+BASE_PATH = 'C:\\Users\\User\\Documents\\Documentos Fábrica ROPRE'
+
+PATHS = {
+    'PALETES': {
+        'QRCODES': os.path.join(BASE_PATH, 'paletes', 'qrcodes'),
+        'FOLHAS': os.path.join(BASE_PATH, 'paletes', 'folhas_palete'),
+    },
+    'TRABALHADORES': {
+        'QRCODES': os.path.join(BASE_PATH, 'trabalhadores', 'qrcodes'),
+        'CARTOES': {
+            'CHEFES': os.path.join(BASE_PATH, 'trabalhadores', 'cartoes', 'chefes'),
+            'TRABALHADORES': os.path.join(BASE_PATH, 'trabalhadores', 'cartoes', 'trabalhadores')
+        }
+    }
+}
+
+
+
+# Adicionar logo após a definição do PATHS
+def criar_estrutura_pastas():
+    """
+    Cria toda a estrutura de pastas necessária caso não exista
+    """
+    try:
+        # Criar pastas para paletes
+        os.makedirs(PATHS['PALETES']['QRCODES'], exist_ok=True)
+        os.makedirs(PATHS['PALETES']['FOLHAS'], exist_ok=True)
+        
+        # Criar pastas para trabalhadores
+        os.makedirs(PATHS['TRABALHADORES']['QRCODES'], exist_ok=True)
+        os.makedirs(PATHS['TRABALHADORES']['CARTOES']['CHEFES'], exist_ok=True)
+        os.makedirs(PATHS['TRABALHADORES']['CARTOES']['TRABALHADORES'], exist_ok=True)
+        
+        print("Estrutura de pastas criada com sucesso!")
+    except Exception as e:
+        print(f"Erro ao criar estrutura de pastas: {e}")
+        raise
+
+criar_estrutura_pastas()  # Garantir que todas as pastas existam
 
 # Configuração do Firebase
 if os.getenv('VERCEL_ENV'):
@@ -32,15 +72,6 @@ firebase_admin.initialize_app(cred)
 db = firestore.client()
 
 
-
-# Caminhos para salvar QR Codes e cartões
-QR_CODES_PATH = os.path.join('static', 'qr_codes')
-CARDS_PATH = os.path.join('static', 'cartoes', 'trabalhadores')
-CHEFES_PATH = os.path.join('static', 'cartoes', 'chefes')
-
-os.makedirs(QR_CODES_PATH, exist_ok=True)
-os.makedirs(CARDS_PATH, exist_ok=True)
-os.makedirs(CHEFES_PATH, exist_ok=True)
 
 
 
@@ -59,12 +90,6 @@ def no_favicon():
 def no_favicon_png():
     return '', 204
 
-
-
-# Rota para outros arquivos estáticos (CSS, JS, etc.)
-@app.route('/static/<path:filename>')
-def static_files(filename):
-    return send_from_directory('static', filename)
 
 
 def gerar_qr_code(conteudo, filename):
@@ -86,19 +111,29 @@ def gerar_qr_code(conteudo, filename):
 
 @app.route('/qr_codes/<filename>', methods=['GET'])
 def get_qr_code(filename):
-    return send_from_directory('static/qr_codes', filename)
+    if 'trabalhador' in filename:
+        return send_from_directory(PATHS['TRABALHADORES']['QRCODES'], filename)
+    else:
+        return send_from_directory(PATHS['PALETES']['QRCODES'], filename)
 
 
-def criar_cartao(trabalhador_id, nome_trabalhador, secao, cor="white", pasta="trabalhadores"):
+def criar_cartao(trabalhador_id, nome_trabalhador, secao, cor="white", tipo="trabalhador"):
     try:
-        os.makedirs(f'static/cartoes/{pasta}', exist_ok=True)
-
-        # Caminho do QR Code gerado
-        qr_code_path = f"static/qr_codes/qr_trabalhador_{trabalhador_id}.png"
+        # Determinar o caminho correto baseado no tipo
+        cartao_path = os.path.join(
+            PATHS['TRABALHADORES']['CARTOES']['CHEFES' if tipo == "chefe" else 'TRABALHADORES'],
+            f"cartao_{trabalhador_id}.png"
+        )
+        
+        # Usar o novo caminho para QR codes
+        qr_code_path = os.path.join(PATHS['TRABALHADORES']['QRCODES'], f"qr_trabalhador_{trabalhador_id}.png")
 
         # Verifica se o QR Code existe
         if not os.path.exists(qr_code_path):
             raise FileNotFoundError(f"QR Code não encontrado em: {qr_code_path}")
+
+        # Criar diretórios se não existirem
+        os.makedirs(os.path.dirname(cartao_path), exist_ok=True)
 
         # Abrir o QR Code
         qr_code_img = Image.open(qr_code_path)
@@ -132,11 +167,10 @@ def criar_cartao(trabalhador_id, nome_trabalhador, secao, cor="white", pasta="tr
         pos_x_secao = (largura - largura_texto_secao) // 2
         draw.text((pos_x_secao, 360), texto_secao, fill="black", font=fonte)
 
-        # Salvar o cartão na pasta específica
-        caminho_cartao = f"static/cartoes/{pasta}/cartao_{trabalhador_id}.png"
-        cartao.save(caminho_cartao)
-        print(f"Cartão gerado em: {caminho_cartao}")
-        return caminho_cartao
+        # Salvar o cartão
+        cartao.save(cartao_path)
+        print(f"Cartão gerado em: {cartao_path}")
+        return cartao_path
     except Exception as e:
         print(f"Erro ao criar cartão: {e}")
         return None
@@ -149,10 +183,10 @@ def criar_cartao(trabalhador_id, nome_trabalhador, secao, cor="white", pasta="tr
 
 @app.route('/cartoes/<pasta>/<filename>', methods=['GET'])
 def get_cartao(pasta, filename):
-    # Certifique-se de que a pasta seja 'trabalhadores' ou 'chefes'
-    if pasta not in ['trabalhadores', 'chefes']:
-        return jsonify({"message": "Pasta inválida"}), 400
-    return send_from_directory(f'static/cartoes/{pasta}', filename)
+    if pasta == 'chefes':
+        return send_from_directory(PATHS['TRABALHADORES']['CARTOES']['CHEFES'], filename)
+    else:
+        return send_from_directory(PATHS['TRABALHADORES']['CARTOES']['TRABALHADORES'], filename)
 
 
 
@@ -193,25 +227,26 @@ def add_trabalhador():
             'chefe': is_chefe
         })
 
-        # Obter ID gerado automaticamente pelo Firestore
-        trabalhador_id = trabalhador_ref[1].id  
+        trabalhador_id = trabalhador_ref[1].id
 
         # Geração de QR Code
         qr_code_path = None
         try:
             conteudo_qr = f"ID: {trabalhador_id}\nNome: {nome}\nSeção: {secao}\nChefe: {is_chefe}"
-            os.makedirs(QR_CODES_PATH, exist_ok=True)
-            qr_code_path = os.path.join(QR_CODES_PATH, f"qr_trabalhador_{trabalhador_id}.png")
+            os.makedirs(PATHS['TRABALHADORES']['QRCODES'], exist_ok=True)
+            qr_code_path = os.path.join(PATHS['TRABALHADORES']['QRCODES'], f"qr_trabalhador_{trabalhador_id}.png")
             gerar_qr_code(conteudo_qr, qr_code_path)
-            print(f"QR Code gerado em: {qr_code_path}")
         except Exception as e:
             print(f"Erro ao gerar QR Code: {e}")
 
-        # Criação do cartão do trabalhador
+        # Criação dos cartões
         try:
-            criar_cartao(trabalhador_id, nome, secao)
+            # Criar cartão normal
+            criar_cartao(trabalhador_id, nome, secao, cor="white", tipo="trabalhador")
+            
+            # Se for chefe, criar cartão adicional
             if is_chefe:
-                criar_cartao(trabalhador_id, nome, secao, cor="red", pasta="chefes")
+                criar_cartao(trabalhador_id, nome, secao, cor="red", tipo="chefe")
         except Exception as e:
             print(f"Erro ao criar cartão: {e}")
 
@@ -245,16 +280,18 @@ def delete_trabalhador(id):
         if not trabalhador.exists:
             return jsonify({'message': 'Trabalhador não encontrado'}), 404
 
-        # Remover QR Code e cartões
-        qr_code_path = os.path.join(QR_CODES_PATH, f"qr_trabalhador_{id}.png")
+        # Remover QR Code
+        qr_code_path = os.path.join(PATHS['TRABALHADORES']['QRCODES'], f"qr_trabalhador_{id}.png")
         if os.path.exists(qr_code_path):
             os.remove(qr_code_path)
 
-        cartao_path = os.path.join(CARDS_PATH, f"cartao_{id}.png")
+        # Remover cartão de trabalhador
+        cartao_path = os.path.join(PATHS['TRABALHADORES']['CARTOES']['TRABALHADORES'], f"cartao_{id}.png")
         if os.path.exists(cartao_path):
             os.remove(cartao_path)
 
-        cartao_chefe_path = os.path.join(CHEFES_PATH, f"cartao_{id}.png")
+        # Remover cartão de chefe (se existir)
+        cartao_chefe_path = os.path.join(PATHS['TRABALHADORES']['CARTOES']['CHEFES'], f"cartao_{id}.png")
         if os.path.exists(cartao_chefe_path):
             os.remove(cartao_chefe_path)
 
@@ -271,8 +308,6 @@ def delete_trabalhador(id):
 
 # Função para gerar QR code da palete
 def gerar_qr_code_palete(palete_id, palete_data):
-    # Certifica-se de que o diretório de QR codes existe
-    os.makedirs('static/qr_codes_paletes', exist_ok=True)
 
     # Conteúdo do QR Code com os dados da palete
     conteudo = (
@@ -302,7 +337,7 @@ def gerar_qr_code_palete(palete_id, palete_data):
     img = qr.make_image(fill_color="black", back_color="white")
 
     # Caminho para salvar o QR Code
-    qr_code_path = f"static/qr_codes_paletes/qr_palete_{palete_id}.png"
+    qr_code_path = os.path.join(PATHS['PALETES']['QRCODES'], f"qr_palete_{palete_id}.png")
     img.save(qr_code_path)
 
     return qr_code_path
@@ -391,7 +426,6 @@ def add_palete():
             'folha_path': folha_path
         }), 201
 
-        return jsonify({'message': 'Palete adicionada com sucesso!', 'id': palete_id, 'qr_code_path': qr_code_path}), 201
     except Exception as e:
         print(f"Erro ao adicionar palete: {e}")
         return jsonify({'message': 'Erro ao adicionar palete.', 'details': str(e)}), 500
@@ -399,9 +433,8 @@ def add_palete():
 
 
 
-@app.route('/FolhaPalete/<filename>', methods=['GET'])
-def get_pdf(filename):
-    return send_from_directory('static/FolhaPalete', filename)
+
+
 
 
 
@@ -419,7 +452,7 @@ def delete_palete(palete_id):
             return jsonify({'message': 'Palete não encontrada'}), 404
 
         # Caminho do arquivo de QR Code associado
-        qr_code_path = os.path.join('static', 'qr_codes_paletes', f"qr_palete_{palete_id}.png")
+        qr_code_path = os.path.join(PATHS['PALETES']['QRCODES'], f"qr_palete_{palete_id}.png")
         if os.path.exists(qr_code_path):
             os.remove(qr_code_path)
             print(f"QR Code removido: {qr_code_path}")
@@ -427,7 +460,7 @@ def delete_palete(palete_id):
             print(f"QR Code não encontrado para exclusão: {qr_code_path}")
 
         # Caminho do arquivo de PDF associado
-        pdf_path = os.path.join('static', 'FolhaPalete', f"folha_palete_{palete_id}.pdf")
+        pdf_path = os.path.join(PATHS['PALETES']['FOLHAS'], f"folha_palete_{palete_id}.pdf")
         if os.path.exists(pdf_path):
             os.remove(pdf_path)
             print(f"PDF removido: {pdf_path}")
@@ -448,18 +481,18 @@ def delete_palete(palete_id):
 
 def gerar_folha_palete(palete_id, palete_data):
     try:
-        # Criar diretório para os PDFs se não existir
-        os.makedirs("static/FolhaPalete", exist_ok=True)
+        # Garantir que o diretório para PDFs exista
+        os.makedirs(PATHS['PALETES']['FOLHAS'], exist_ok=True)
 
-        # Caminho do QR code
-        qr_code_path = f"static/qr_codes_paletes/qr_palete_{palete_id}.png"
+        # Caminho do QR Code
+        qr_code_path = os.path.join(PATHS['PALETES']['QRCODES'], f"qr_palete_{palete_id}.png")
         if not os.path.exists(qr_code_path):
-            raise FileNotFoundError(f"QR Code não encontrado para a palete {palete_id}")
+            raise FileNotFoundError(f"QR Code não encontrado em: {qr_code_path}")
 
-        # Nome do arquivo PDF
-        output_pdf_path = f"static/FolhaPalete/folha_palete_{palete_id}.pdf"
+        # Caminho para salvar o PDF
+        output_pdf_path = os.path.join(PATHS['PALETES']['FOLHAS'], f"folha_palete_{palete_id}.pdf")
 
-        # Criar PDF
+        # Criar o PDF
         pdf = canvas.Canvas(output_pdf_path, pagesize=A4)
         width, height = A4
 
@@ -469,15 +502,13 @@ def gerar_folha_palete(palete_id, palete_data):
         titulo_width = pdf.stringWidth(titulo, "Helvetica-Bold", 25)
         pdf.drawString((width - titulo_width) / 2, height - 50, titulo)
 
-        # Adicionar QR code
+        # Adicionar QR Code ao PDF
         pdf.drawImage(qr_code_path, x=173, y=height - 300, width=240, height=240)
 
-        # Informações da palete
+        # Adicionar informações da palete
         pdf.setFont("Helvetica", 12)
         y = height - 350
         line_height = 20
-
-        # Lista de informações para exibir
         informacoes = [
             f"Data de Entrega: {palete_data['data_entrega']}",
             f"OP: {palete_data['op']}",
@@ -492,18 +523,15 @@ def gerar_folha_palete(palete_id, palete_data):
             f"Número do Lote: {palete_data['numero_lote']}",
         ]
 
-        # Desenhar informações
         for info in informacoes:
             pdf.drawString(50, y, info)
             y -= line_height
 
-        # Adicionar seção de destinos
+        # Adicionar seções de destino
         y -= line_height
         pdf.setFont("Helvetica-Bold", 12)
         pdf.drawString(50, y, "Seções de destino inicial e próximas:")
         y -= line_height
-
-        # Lista de seções com checkbox
         secoes = [
             "Corte e vinco",
             "Seção da cola",
@@ -511,7 +539,6 @@ def gerar_folha_palete(palete_id, palete_data):
             "Confeção",
             "Acabamento"
         ]
-
         pdf.setFont("Helvetica", 12)
         for secao in secoes:
             pdf.drawString(70, y, f"(   ) {secao}")
@@ -519,7 +546,6 @@ def gerar_folha_palete(palete_id, palete_data):
 
         # Finalizar o PDF
         pdf.save()
-
         print(f"PDF gerado com sucesso: {output_pdf_path}")
         return output_pdf_path
 
