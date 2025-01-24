@@ -43,8 +43,11 @@ db = firestore.client()
     # Rota para o index.html
 @app.route('/')
 def home():
-    # Especifica o diretório onde o index.html está localizado
-    return send_from_directory('.', 'index.html')
+    try:
+        return send_from_directory('.', 'index.html')
+    except FileNotFoundError:
+        return jsonify({'message': 'Página inicial não encontrada. Verifique o index.html.'}), 404
+
 
 @app.route('/favicon.ico')
 def no_favicon():
