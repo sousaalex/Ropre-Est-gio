@@ -40,13 +40,15 @@ db = firestore.client()
 
 
 
-    # Rota para o index.html
+# Rota para o index.html
 @app.route('/')
 def home():
     try:
+        print("Tentando servir o index.html")
         return send_from_directory('.', 'index.html')
-    except FileNotFoundError:
-        return jsonify({'message': 'Página inicial não encontrada. Verifique o index.html.'}), 404
+    except Exception as e:
+        print(f"Erro ao servir index.html: {e}")
+        return "Erro ao servir a página inicial.", 500
 
 
 @app.route('/favicon.ico')
