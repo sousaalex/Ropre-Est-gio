@@ -185,7 +185,7 @@ def gerar_cartao(trabalhador_id):
         cartao.paste(qr_code_img, (100, 100))
 
         # Configuração da fonte
-        font_path = './static/fonts/arial.ttf'
+        font_path = '/var/task/static/fonts/arial.ttf'
         print(f"Font path: {font_path}")  # Verificar se o caminho está correto
         font_size = 24
         fonte = ImageFont.truetype(font_path, font_size)
