@@ -150,15 +150,7 @@ function listarTrabalhadores() {
                 const buttonContainer = document.createElement("div");
                 buttonContainer.className = "d-flex gap-2";
 
-                // Botão de download do cartão de trabalhador
-                const botaoDownloadTrabalhador = document.createElement("button");
-                botaoDownloadTrabalhador.className = "btn btn-secondary btn-sm";
-                botaoDownloadTrabalhador.innerHTML = `<i class="bi bi-download"></i> Cartão Trabalhador`;
-                botaoDownloadTrabalhador.onclick = () => {
-                    const linkTrabalhador = `${API_URL}/cartao/${trabalhador.id}`;
-                    window.open(linkTrabalhador, "_blank");
-                };
-                buttonContainer.appendChild(botaoDownloadTrabalhador);
+                
 
                 // Botão de remover
                 const botaoRemover = document.createElement("button-trabalhadores");
