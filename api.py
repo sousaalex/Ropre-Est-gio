@@ -15,7 +15,7 @@ import firebase_admin
 from firebase_admin import credentials, firestore
 import base64
 from io import BytesIO
-
+import tempfile
 
 
 app = Flask(__name__)
@@ -155,7 +155,7 @@ def add_trabalhador():
 
 
 
-import tempfile
+
 
 @app.route('/cartao/<string:trabalhador_id>', methods=['GET'])
 def gerar_cartao(trabalhador_id):
@@ -182,14 +182,17 @@ def gerar_cartao(trabalhador_id):
         qr_code_img = qr_code_img.resize((qr_code_tamanho, qr_code_tamanho))
         cartao.paste(qr_code_img, (100, 100))
 
-
-
         # Adicionar informações do trabalhador
+        # Certifique-se de que a fonte está disponível no Vercel em "static/fonts"
         font_path = os.path.join(os.path.dirname(__file__), 'static', 'fonts', 'arial.ttf')
 
         # Configuração do tamanho da fonte
-        font_size = 24
-        fonte = ImageFont.truetype(font_path, font_size)        
+        try:
+            fonte = ImageFont.truetype(font_path, size=24)
+        except Exception as e:
+            print(f"Erro ao carregar fonte: {e}")
+            return jsonify({'message': 'Erro ao carregar a fonte.', 'details': str(e)}), 500
+
         draw.text((50, 350), f"Nome: {trabalhador['nome']}", fill="black", font=fonte)
         draw.text((50, 400), f"Secção: {trabalhador['secao']}", fill="black", font=fonte)
         if trabalhador.get('chefe', False):
