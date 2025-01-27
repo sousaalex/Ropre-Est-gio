@@ -6,15 +6,11 @@
       "use": "@vercel/python"
     },
     {
-      "src": "static/**/*",
+      "src": "index.html",
       "use": "@vercel/static"
     }
   ],
   "routes": [
-    {
-      "src": "/static/(.*)",
-      "dest": "/static/$1"
-    },
     {
       "src": "/",
       "dest": "/index.html"

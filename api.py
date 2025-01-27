@@ -45,10 +45,11 @@ db = firestore.client()
 def home():
     try:
         print("Tentando servir o index.html")
-        return send_from_directory('.', 'index.html')
+        return send_from_directory(os.path.dirname(os.path.abspath(__file__)), 'index.html')
     except Exception as e:
         print(f"Erro ao servir index.html: {e}")
         return "Erro ao servir a página inicial.", 500
+
 
 
 @app.route('/favicon.ico')
