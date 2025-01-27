@@ -6,19 +6,22 @@
       "use": "@vercel/python"
     },
     {
-      "src": "index.html",
+      "src": "fonts/**/*",
       "use": "@vercel/static"
     },
     {
-      "src": "fonts/**/*",
+      "src": "index.html",
       "use": "@vercel/static"
     }
-
   ],
   "routes": [
     {
       "src": "/",
       "dest": "/index.html"
+    },
+    {
+      "src": "/fonts/(.*)",
+      "dest": "/fonts/$1"
     },
     {
       "src": "/(.*)",
