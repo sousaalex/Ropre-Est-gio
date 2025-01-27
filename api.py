@@ -182,8 +182,11 @@ def gerar_cartao(trabalhador_id):
         qr_code_img = qr_code_img.resize((qr_code_tamanho, qr_code_tamanho))
         cartao.paste(qr_code_img, (100, 100))
 
+
+        font_path = os.path.join(os.path.dirname(__file__), "fonts", "arial.ttf")
+
         # Adicionar informações do trabalhador
-        fonte = ImageFont.load_default()  # Substitua por uma fonte válida, se necessário
+        fonte = ImageFont.truetype(font_path, size=24)
         draw.text((50, 350), f"Nome: {trabalhador['nome']}", fill="black", font=fonte)
         draw.text((50, 400), f"Seção: {trabalhador['secao']}", fill="black", font=fonte)
         if trabalhador.get('chefe', False):
