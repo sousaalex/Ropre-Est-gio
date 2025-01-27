@@ -16,7 +16,6 @@ from firebase_admin import credentials, firestore
 import base64
 from io import BytesIO
 import tempfile
-import imgkit
 
 
 app = Flask(__name__)
@@ -139,10 +138,8 @@ def add_trabalhador():
 
 
 
-config = imgkit.config(wkhtmltoimage='c:\Program Files\wkhtmltopdf\bin\wkhtmltoimage.exe')
-
 @app.route('/cartao/<string:trabalhador_id>', methods=['GET'])
-def gerar_cartao_html(trabalhador_id):
+def gerar_cartao_pdf(trabalhador_id):
     try:
         # Buscar informações do trabalhador no Firestore
         trabalhador_ref = db.collection('trabalhadores').document(trabalhador_id).get()
@@ -153,66 +150,50 @@ def gerar_cartao_html(trabalhador_id):
 
         # Gerar QR Code a partir do Base64
         qr_code_base64 = trabalhador['qr_code']
-        qr_code_img_src = f"data:image/png;base64,{qr_code_base64}"
+        qr_code_data = base64.b64decode(qr_code_base64)
+        qr_code_img = Image.open(BytesIO(qr_code_data))
 
-        # Template HTML para o cartão
-        html_template = f"""
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Cartão do Trabalhador</title>
-            <style>
-                body {{
-                    font-family: Arial, sans-serif;
-                    text-align: center;
-                    margin: 0;
-                    padding: 0;
-                }}
-                .card {{
-                    width: 400px;
-                    height: 600px;
-                    margin: 50px auto;
-                    border: 1px solid #000;
-                    padding: 20px;
-                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-                    display: flex;
-                    flex-direction: column;
-                    align-items: center;
-                }}
-                .qr-code {{
-                    width: 200px;
-                    height: 200px;
-                    margin-bottom: 20px;
-                }}
-                .info {{
-                    font-size: 20px;
-                    line-height: 1.5;
-                    color: #333;
-                }}
-            </style>
-        </head>
-        <body>
-            <div class="card">
-                <img class="qr-code" src="{qr_code_img_src}" alt="QR Code">
-                <div class="info">
-                    <p><strong>Nome:</strong> {trabalhador['nome']}</p>
-                    <p><strong>Secção:</strong> {trabalhador['secao']}</p>
-                    <p><strong>Chefe:</strong> {"Sim" if trabalhador.get('chefe', False) else "Não"}</p>
-                </div>
-            </div>
-        </body>
-        </html>
-        """
-
-        # Converter HTML para PNG usando imgkit
+        # Caminho temporário para salvar o PDF
         temp_dir = tempfile.gettempdir()
-        cartao_path = os.path.join(temp_dir, f"cartao_{trabalhador_id}.png")
-        imgkit.from_string(html_template, cartao_path)
+        pdf_path = f"{temp_dir}/cartao_{trabalhador_id}.pdf"
 
-        # Retornar o cartão como um arquivo
-        return send_from_directory(temp_dir, f"cartao_{trabalhador_id}.png", as_attachment=True)
+        # Criar o PDF com tamanho personalizado (8.5 cm x 5.5 cm)
+        largura, altura = 7 * cm, 10 * cm
+        pdf = canvas.Canvas(pdf_path, pagesize=(largura, altura))
+
+        # Adicionar QR Code ao cartão
+        qr_code_img = qr_code_img.resize((100, 100))  # Redimensionar o QR Code
+        qr_code_buffer = BytesIO()
+        qr_code_img.save(qr_code_buffer, format="PNG")
+        pdf.drawImage(ImageReader(qr_code_buffer), (largura - 100) / 2, altura - 120, width=100, height=100)
+
+        # Adicionar informações do trabalhador logo abaixo do QR Code
+        pdf.setFont("Helvetica", 12)  # Usar a fonte Helvetica (similar à Arial)
+
+        # Definir a posição inicial para o texto (abaixo do QR Code)
+        y_info_start = altura - 140  # Começar logo abaixo do QR Code
+        line_spacing = 15  # Espaçamento entre as linhas de texto
+
+        # Textos com informações do trabalhador
+        nome_texto = f"Nome: {trabalhador['nome']}"
+        secao_texto = f"Seção: {trabalhador['secao']}"
+        chefe_texto = f"Chefe: {'Sim' if trabalhador.get('chefe', False) else 'Não'}"
+
+        # Calcular larguras para centralização
+        nome_width = pdf.stringWidth(nome_texto, "Helvetica", 12)
+        secao_width = pdf.stringWidth(secao_texto, "Helvetica", 12)
+        chefe_width = pdf.stringWidth(chefe_texto, "Helvetica", 12)
+
+        # Desenhar textos centralizados
+        pdf.drawString((largura - nome_width) / 2, y_info_start, nome_texto)
+        pdf.drawString((largura - secao_width) / 2, y_info_start - line_spacing, secao_texto)
+        pdf.drawString((largura - chefe_width) / 2, y_info_start - 2 * line_spacing, chefe_texto)
+
+        # Finalizar o PDF
+        pdf.save()
+
+        # Retornar o PDF como arquivo para download
+        return send_from_directory(temp_dir, f"cartao_{trabalhador_id}.pdf", as_attachment=True)
     except Exception as e:
         print(f"Erro ao gerar cartão: {e}")
         return jsonify({'message': 'Erro ao gerar cartão.', 'details': str(e)}), 500
