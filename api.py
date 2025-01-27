@@ -270,6 +270,91 @@ def add_palete():
         return jsonify({'message': 'Erro ao adicionar palete.', 'details': str(e)}), 500
 
 
+# Rota para gerar o PDF da palete
+# Rota para gerar o PDF da palete
+@app.route('/paletes/<string:palete_id>/pdf', methods=['GET'])
+def gerar_pdf_palete(palete_id):
+    try:
+        # Buscar informações da palete no Firestore
+        palete_ref = db.collection('paletes').document(palete_id).get()
+        if not palete_ref.exists:
+            return jsonify({'message': 'Palete não encontrada.'}), 404
+
+        palete = palete_ref.to_dict()
+
+        # Gerar QR Code a partir do Base64
+        qr_code_base64 = palete['qr_code']
+        qr_code_data = base64.b64decode(qr_code_base64)
+        qr_code_img = Image.open(BytesIO(qr_code_data))
+
+        # Configurações do PDF
+        temp_dir = tempfile.gettempdir()
+        pdf_path = os.path.join(temp_dir, f"palete_{palete_id}.pdf")
+        pdf = canvas.Canvas(pdf_path, pagesize=A4)
+        largura, altura = A4  # Dimensões do papel A4 em pontos
+
+        # Adicionar QR Code no topo
+        qr_code_size = 150  # Tamanho do QR Code
+        qr_code_buffer = BytesIO()
+        qr_code_img = qr_code_img.resize((qr_code_size, qr_code_size))
+        qr_code_img.save(qr_code_buffer, format="PNG")
+        pdf.drawImage(ImageReader(qr_code_buffer), (largura - qr_code_size) / 2, altura - 200, width=qr_code_size, height=qr_code_size)
+
+        # Adicionar informações da palete abaixo do QR Code
+        pdf.setFont("Helvetica", 20)
+        x_info_start = 50  # Posição fixa no eixo X (margem esquerda)
+        y_info_start = altura - 250
+        line_spacing = 25
+
+        informacoes = [
+            f"Data de Entrega: {palete['data_entrega']}",
+            f"OP: {palete['op']}",
+            f"Referência: {palete['referencia']}",
+            f"Nome do Produto: {palete['nome_produto']}",
+            f"Medida: {palete['medida']}",
+            f"Cor do Botão: {palete['cor_botao']}",
+            f"Cor do Ribete: {palete['cor_ribete']}",
+            f"Leva Embalagem: {'Sim' if palete['leva_embalagem'] else 'Não'}",
+            f"Quantidade: {palete['quantidade']}",
+            f"Data e Hora: {palete['data_hora']}",
+            f"Número do Lote: {palete['numero_lote']}"
+        ]
+
+        # Adicionar informações ao PDF
+        for info in informacoes:
+            pdf.drawString(x_info_start, y_info_start, info)
+            y_info_start -= line_spacing
+
+        # Adicionar conteúdo predefinido no final
+        y_info_start -= 30  # Espaçamento adicional antes do conteúdo
+        pdf.setFont("Helvetica-Bold", 17)
+        pdf.drawString(x_info_start, y_info_start, "Secção de destino inicial e as próximas secções:")
+        y_info_start -= 20
+        pdf.setFont("Helvetica", 17)
+
+        secao_destinos = [
+            "(   ) Corte e vinco",
+            "(   ) Secção da cola",
+            "(   ) Acabamento",
+            "(   ) Confeção",
+            "(   ) Acabamento"
+        ]
+
+        for secao in secao_destinos:
+            pdf.drawString(x_info_start, y_info_start, secao)
+            y_info_start -= line_spacing
+
+        # Finalizar e salvar o PDF
+        pdf.save()
+
+        # Retornar o PDF como arquivo para download
+        return send_from_directory(temp_dir, f"palete_{palete_id}.pdf", as_attachment=True)
+
+    except Exception as e:
+        print(f"Erro ao gerar PDF da palete: {e}")
+        return jsonify({'message': 'Erro ao gerar PDF.', 'details': str(e)}), 500
+
+
 
         
 # Rota para remover palete

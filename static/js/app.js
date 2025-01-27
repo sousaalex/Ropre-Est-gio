@@ -151,7 +151,7 @@ function listarTrabalhadores() {
                 buttonContainer.className = "d-flex gap-2";
 
                 // Botão de download do cartão de trabalhador
-                const botaoDownloadTrabalhador = document.createElement("button");
+                const botaoDownloadTrabalhador = document.createElement("button-trabalhadores");
                 botaoDownloadTrabalhador.className = "btn btn-secondary btn-sm";
                 botaoDownloadTrabalhador.innerHTML = `<i class="bi bi-download"></i> Cartão Trabalhador`;
                 botaoDownloadTrabalhador.onclick = () => {
@@ -491,10 +491,11 @@ function listarPaletes() {
             data.forEach(palete => {
                 // Cria um item da lista para a palete
                 const item = document.createElement("li");
-                item.className = "list-group-item"; // Classe para estilização básica
+                item.className = "list-group-item d-flex justify-content-between align-items-center"; // Estilo para alinhamento básico
 
                 // Cria o conteúdo do item com as informações da palete
-                item.innerHTML = `
+                const infoContainer = document.createElement("div");
+                infoContainer.innerHTML = `
                     <strong>ID:</strong> ${palete.id}<br>
                     <strong>Data de Entrega:</strong> ${palete.data_entrega}<br>
                     <strong>OP:</strong> ${palete.op}<br>
@@ -508,20 +509,40 @@ function listarPaletes() {
                     <strong>Data e Hora:</strong> ${palete.data_hora}<br>
                     <strong>Número do Lote:</strong> ${palete.numero_lote}
                 `;
+                item.appendChild(infoContainer);
 
+                // Contêiner para botões
+                const botoesContainer = document.createElement("div");
+                botoesContainer.className = "d-flex gap-2 align-items-center";
+                botoesContainer.style.marginRight = "15px"; // Margem à direita
 
-                // Adiciona botão de remover
+                // Botão de baixar o PDF
+                const botaoBaixarPDF = document.createElement("button");
+                botaoBaixarPDF.innerHTML = '<i class="bi bi-download"></i> Baixar PDF';
+                botaoBaixarPDF.className = "btn btn-secondary btn-sm";
+                botaoBaixarPDF.onclick = () => {
+                    const linkPDF = `${API_URL}/paletes/${palete.id}/pdf`;
+                    window.open(linkPDF, "_blank"); // Abre o link do PDF em uma nova aba
+                };
+                botoesContainer.appendChild(botaoBaixarPDF);
+
+                // Botão de remover
                 const botaoRemover = document.createElement("button");
                 botaoRemover.textContent = "Remover";
-                botaoRemover.className = "btn btn-danger btn-sm ms-3";
+                botaoRemover.className = "btn btn-danger btn-sm";
                 botaoRemover.onclick = () => removerPalete(palete.id);
-                item.appendChild(botaoRemover);
+                botoesContainer.appendChild(botaoRemover);
+
+                // Adiciona o contêiner de botões ao item
+                item.appendChild(botoesContainer);
 
                 lista.appendChild(item); // Adiciona o item à lista
             });
         })
         .catch(error => console.error("Erro ao listar paletes:", error));
 }
+
+
 
 
 
@@ -580,7 +601,7 @@ function startQRCodeScanner(readerId) {
 
     html5QrCode
         .start(
-            { facingMode: "environment" },//user-> camera frontal<->environment->camera traseira
+            { facingMode: "user" },//user-> camera frontal<->environment->camera traseira
             config,
             (decodedText) => {
                 console.log("QR Code lido:", decodedText);
