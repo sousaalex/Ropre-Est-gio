@@ -16,6 +16,7 @@ from firebase_admin import credentials, firestore
 import base64
 from io import BytesIO
 import tempfile
+import shutil
 
 
 app = Flask(__name__)
@@ -160,14 +161,12 @@ def add_trabalhador():
 @app.route('/cartao/<string:trabalhador_id>', methods=['GET'])
 def gerar_cartao(trabalhador_id):
     try:
-        print(f"Gerando cartão para trabalhador ID: {trabalhador_id}")  # Log para debug
         # Buscar informações do trabalhador no Firestore
         trabalhador_ref = db.collection('trabalhadores').document(trabalhador_id).get()
         if not trabalhador_ref.exists:
             return jsonify({'message': 'Trabalhador não encontrado.'}), 404
 
         trabalhador = trabalhador_ref.to_dict()
-        print(f"Trabalhador encontrado: {trabalhador}")  # Verificar os dados
 
         # Gerar QR Code a partir do Base64
         qr_code_base64 = trabalhador['qr_code']
@@ -184,12 +183,18 @@ def gerar_cartao(trabalhador_id):
         qr_code_img = qr_code_img.resize((qr_code_tamanho, qr_code_tamanho))
         cartao.paste(qr_code_img, (100, 100))
 
-        # Configuração da fonte
-        font_path = '/var/task/static/fonts/arial.ttf'
-        print(f"Font path: {font_path}")  # Verificar se o caminho está correto
+        # Caminho da fonte original
+        font_path = os.path.join(os.path.dirname(__file__), 'static', 'fonts', 'arial.ttf')
+        
+        # Copiar a fonte para o diretório temporário
+        temp_font_path = os.path.join(tempfile.gettempdir(), 'arial.ttf')
+        shutil.copy(font_path, temp_font_path)
+        
+        # Carregar a fonte a partir do diretório temporário
         font_size = 24
-        fonte = ImageFont.truetype(font_path, font_size)
-
+        fonte = ImageFont.truetype(temp_font_path, font_size)
+        
+        # Adicionar informações do trabalhador
         draw.text((50, 350), f"Nome: {trabalhador['nome']}", fill="black", font=fonte)
         draw.text((50, 400), f"Secção: {trabalhador['secao']}", fill="black", font=fonte)
         if trabalhador.get('chefe', False):
@@ -200,7 +205,6 @@ def gerar_cartao(trabalhador_id):
         # Salvar o cartão no diretório temporário
         temp_dir = tempfile.gettempdir()
         cartao_path = os.path.join(temp_dir, f"cartao_{trabalhador_id}.png")
-        print(f"Salvando cartão em: {cartao_path}")
         cartao.save(cartao_path, format="PNG")
 
         # Retornar o cartão como um arquivo
@@ -208,6 +212,8 @@ def gerar_cartao(trabalhador_id):
     except Exception as e:
         print(f"Erro ao gerar cartão: {e}")
         return jsonify({'message': 'Erro ao gerar cartão.', 'details': str(e)}), 500
+
+
 
 
 
