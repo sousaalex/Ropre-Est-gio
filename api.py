@@ -16,7 +16,7 @@ from firebase_admin import credentials, firestore
 import base64
 from io import BytesIO
 import tempfile
-import shutil
+import imgkit
 
 
 app = Flask(__name__)
@@ -89,19 +89,6 @@ def gerar_qr_code_base64(conteudo):
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
 # Rota para listar trabalhadores
 @app.route('/trabalhadores', methods=['GET'])
 def get_trabalhadores():
@@ -111,8 +98,6 @@ def get_trabalhadores():
         return jsonify(trabalhadores), 200
     except Exception as e:
         return jsonify({'message': 'Erro ao listar trabalhadores.', 'details': str(e)}), 500
-
-
 
 
 
@@ -154,12 +139,10 @@ def add_trabalhador():
 
 
 
-
-
-
+config = imgkit.config(wkhtmltoimage='c:\Program Files\wkhtmltopdf\bin\wkhtmltoimage.exe')
 
 @app.route('/cartao/<string:trabalhador_id>', methods=['GET'])
-def gerar_cartao(trabalhador_id):
+def gerar_cartao_html(trabalhador_id):
     try:
         # Buscar informações do trabalhador no Firestore
         trabalhador_ref = db.collection('trabalhadores').document(trabalhador_id).get()
@@ -170,53 +153,69 @@ def gerar_cartao(trabalhador_id):
 
         # Gerar QR Code a partir do Base64
         qr_code_base64 = trabalhador['qr_code']
-        qr_code_data = base64.b64decode(qr_code_base64)
-        qr_code_img = Image.open(BytesIO(qr_code_data))
+        qr_code_img_src = f"data:image/png;base64,{qr_code_base64}"
 
-        # Criar imagem do cartão
-        largura, altura = 400, 600
-        cartao = Image.new('RGB', (largura, altura), 'white')
-        draw = ImageDraw.Draw(cartao)
+        # Template HTML para o cartão
+        html_template = f"""
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Cartão do Trabalhador</title>
+            <style>
+                body {{
+                    font-family: Arial, sans-serif;
+                    text-align: center;
+                    margin: 0;
+                    padding: 0;
+                }}
+                .card {{
+                    width: 400px;
+                    height: 600px;
+                    margin: 50px auto;
+                    border: 1px solid #000;
+                    padding: 20px;
+                    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                }}
+                .qr-code {{
+                    width: 200px;
+                    height: 200px;
+                    margin-bottom: 20px;
+                }}
+                .info {{
+                    font-size: 20px;
+                    line-height: 1.5;
+                    color: #333;
+                }}
+            </style>
+        </head>
+        <body>
+            <div class="card">
+                <img class="qr-code" src="{qr_code_img_src}" alt="QR Code">
+                <div class="info">
+                    <p><strong>Nome:</strong> {trabalhador['nome']}</p>
+                    <p><strong>Secção:</strong> {trabalhador['secao']}</p>
+                    <p><strong>Chefe:</strong> {"Sim" if trabalhador.get('chefe', False) else "Não"}</p>
+                </div>
+            </div>
+        </body>
+        </html>
+        """
 
-        # Adicionar QR Code ao cartão
-        qr_code_tamanho = 200
-        qr_code_img = qr_code_img.resize((qr_code_tamanho, qr_code_tamanho))
-        cartao.paste(qr_code_img, (100, 100))
-
-        # Caminho da fonte original
-        font_path = os.path.join(os.path.dirname(__file__), 'static', 'fonts', 'arial.ttf')
-        
-        # Copiar a fonte para o diretório temporário
-        temp_font_path = os.path.join(tempfile.gettempdir(), 'arial.ttf')
-        shutil.copy(font_path, temp_font_path)
-        
-        # Carregar a fonte a partir do diretório temporário
-        font_size = 24
-        fonte = ImageFont.truetype(temp_font_path, font_size)
-        
-        # Adicionar informações do trabalhador
-        draw.text((50, 350), f"Nome: {trabalhador['nome']}", fill="black", font=fonte)
-        draw.text((50, 400), f"Secção: {trabalhador['secao']}", fill="black", font=fonte)
-        if trabalhador.get('chefe', False):
-            draw.text((50, 450), "Chefe: Sim", fill="black", font=fonte)
-        else:
-            draw.text((50, 450), "Chefe: Não", fill="black", font=fonte)
-
-        # Salvar o cartão no diretório temporário
+        # Converter HTML para PNG usando imgkit
         temp_dir = tempfile.gettempdir()
         cartao_path = os.path.join(temp_dir, f"cartao_{trabalhador_id}.png")
-        cartao.save(cartao_path, format="PNG")
+        imgkit.from_string(html_template, cartao_path)
 
         # Retornar o cartão como um arquivo
         return send_from_directory(temp_dir, f"cartao_{trabalhador_id}.png", as_attachment=True)
     except Exception as e:
         print(f"Erro ao gerar cartão: {e}")
         return jsonify({'message': 'Erro ao gerar cartão.', 'details': str(e)}), 500
-
-
-
-
-
 
 
 
@@ -241,14 +240,6 @@ def delete_trabalhador(id):
         return jsonify({'message': 'Erro ao remover trabalhador.', 'details': str(e)}), 500
 
 
-
-
-
-
-
-
-
-       
        
 # Rota para listar todas as paletes
 @app.route('/paletes', methods=['GET'])
@@ -299,14 +290,6 @@ def add_palete():
 
 
 
-
-
-
-
-
-
-
-
         
 # Rota para remover palete
 @app.route('/paletes/<string:palete_id>', methods=['DELETE'])
@@ -327,11 +310,6 @@ def delete_palete(palete_id):
     except Exception as e:
         print(f"Erro ao remover palete: {e}")
         return jsonify({'message': 'Erro ao remover palete', 'details': str(e)}), 500
-
-
-
-
-
 
 
 
