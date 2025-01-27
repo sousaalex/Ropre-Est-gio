@@ -184,19 +184,18 @@ def gerar_cartao(trabalhador_id):
 
 
 
-         # Carregar a fonte personalizada
-        font_path = os.path.join(os.path.dirname(__file__), 'fonts', 'arial.ttf')  # Caminho da fonte
-        fonte = ImageFont.truetype(font_path, size=24)  # Ajuste o tamanho conforme necessário
-
         # Adicionar informações do trabalhador
+        font_path = os.path.join(os.path.dirname(__file__), 'static', 'fonts', 'arial.ttf')
+
+        # Configuração do tamanho da fonte
+        font_size = 24
+        fonte = ImageFont.truetype(font_path, font_size)        
         draw.text((50, 350), f"Nome: {trabalhador['nome']}", fill="black", font=fonte)
-        draw.text((50, 400), f"Seção: {trabalhador['secao']}", fill="black", font=fonte)
+        draw.text((50, 400), f"Secção: {trabalhador['secao']}", fill="black", font=fonte)
         if trabalhador.get('chefe', False):
             draw.text((50, 450), "Chefe: Sim", fill="black", font=fonte)
         else:
             draw.text((50, 450), "Chefe: Não", fill="black", font=fonte)
-
-
 
         # Salvar o cartão no diretório temporário
         temp_dir = tempfile.gettempdir()

@@ -6,7 +6,7 @@
       "use": "@vercel/python"
     },
     {
-      "src": "fonts/**/*",
+      "src": "static/fonts/**/*",
       "use": "@vercel/static"
     },
     {
@@ -20,8 +20,8 @@
       "dest": "/index.html"
     },
     {
-      "src": "/fonts/(.*)",
-      "dest": "/fonts/$1"
+      "src": "/static/fonts/(.*)",
+      "dest": "/static/fonts/$1"
     },
     {
       "src": "/(.*)",
