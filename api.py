@@ -155,6 +155,8 @@ def add_trabalhador():
 
 
 
+import tempfile
+
 @app.route('/cartao/<string:trabalhador_id>', methods=['GET'])
 def gerar_cartao(trabalhador_id):
     try:
@@ -180,11 +182,8 @@ def gerar_cartao(trabalhador_id):
         qr_code_img = qr_code_img.resize((qr_code_tamanho, qr_code_tamanho))
         cartao.paste(qr_code_img, (100, 100))
 
-
-        font_path = os.path.join(os.path.dirname(__file__), "fonts", "arial.ttf")
-
         # Adicionar informações do trabalhador
-        fonte = ImageFont.truetype(font_path, size=24)
+        fonte = ImageFont.load_default()  # Substitua por uma fonte válida, se necessário
         draw.text((50, 350), f"Nome: {trabalhador['nome']}", fill="black", font=fonte)
         draw.text((50, 400), f"Seção: {trabalhador['secao']}", fill="black", font=fonte)
         if trabalhador.get('chefe', False):
@@ -192,20 +191,17 @@ def gerar_cartao(trabalhador_id):
         else:
             draw.text((50, 450), "Chefe: Não", fill="black", font=fonte)
 
-        # Salvar em memória para retornar
-        buffered = BytesIO()
-        cartao.save(buffered, format="PNG")
-        buffered.seek(0)
+        # Salvar o cartão no diretório temporário
+        temp_dir = tempfile.gettempdir()
+        cartao_path = os.path.join(temp_dir, f"cartao_{trabalhador_id}.png")
+        cartao.save(cartao_path, format="PNG")
 
         # Retornar o cartão como um arquivo
-        return (
-            buffered.getvalue(),
-            200,
-            {'Content-Type': 'image/png', 'Content-Disposition': f'attachment; filename=cartao_{trabalhador_id}.png'}
-        )
+        return send_from_directory(temp_dir, f"cartao_{trabalhador_id}.png", as_attachment=True)
     except Exception as e:
         print(f"Erro ao gerar cartão: {e}")
         return jsonify({'message': 'Erro ao gerar cartão.', 'details': str(e)}), 500
+
 
 
 
