@@ -33,19 +33,9 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
 
-    // Configurar evento de submit para o formulário
-    const form = document.getElementById("form-id");
-    if (form) {
-        form.addEventListener("submit", (event) => {
-            event.preventDefault(); // Evita o comportamento padrão do formulário
-            listarRegistro(); // Chama a função para listar os registros
-        });
-        console.log("Evento de submit configurado no formulário com ID 'form-id'.");
-    } else {
-        console.error("Elemento com o ID 'form-id' não encontrado no DOM.");
-    }
-
     
+
+
     // Lista trabalhadores e paletes ao carregar
     listarTrabalhadores();
 
