@@ -7,10 +7,13 @@ const API_URL = window.location.hostname.includes("localhost") ||
   : `https://${window.location.hostname}/`; // URL do Vercel (produção ou preview)
 
 console.log(`API_URL configurada: ${API_URL}`);
-
+console.log("Verificando se o JavaScript está sendo carregado corretamente...");
 
 // Aguarda o carregamento completo do DOM
 document.addEventListener("DOMContentLoaded", () => {
+
+    console.log("✅ DOM totalmente carregado! Isso significa que os eventos devem estar funcionais.");
+
     // Solicitar o tipo de usuário e configurar o layout
     const tipoUsuario = prompt("Digite o tipo de usuário (admin, chefe, funcionario):").toLowerCase();
     definirLayout(tipoUsuario);
