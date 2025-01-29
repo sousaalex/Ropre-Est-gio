@@ -6,8 +6,8 @@ const API_URL = window.location.hostname.includes("localhost") ||
   ? "http://10.0.1.242:5000" // URL do backend local
   : `https://${window.location.hostname}/`; // URL do Vercel (produção ou preview)
 
-console.log(`API_URL configurada: ${API_URL}`);
 console.log("Verificando se o JavaScript está sendo carregado corretamente...");
+console.log(`API_URL configurada: ${API_URL}`);
 
 // Aguarda o carregamento completo do DOM
 document.addEventListener("DOMContentLoaded", () => {
