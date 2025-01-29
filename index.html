@@ -18,9 +18,8 @@
             <ul class="nav nav-tabs" id="tabs">
                 <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-trabalhadores">Trabalhadores</a></li>
                 <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-paletes">Paletes</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-tarefas">Tarefas Concluídas</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-maquinas">Maquinas</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-nao-planejadas">Tarefas Não Planejadas</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-registro_trabalho">Registro Trabalho</a></li>
+                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-tarefas">Tarefas</a></li>
             </ul>
             <div class="tab-content mt-4">
                 <!-- Trabalhadores -->
@@ -53,26 +52,15 @@
                                             <label for="nome-trabalhador" class="form-label">Nome:</label>
                                             <input type="text" id="nome-trabalhador" class="form-control" placeholder="Nome" required>
                                         </div>
-                                        <div class="mb-3">
-                                            <label for="secao-trabalhador" class="form-label">Seção:</label>
-                                            <select id="secao-trabalhador" class="form-control">
-                                                <option value="" disabled selected>Selecione uma seção ⮟</option>
-                                                <option value="Acabamento">Acabamento</option>
-                                                <option value="Controle de Qualidade">Controle de Qualidade</option>
-                                                <option value="Serigrafia">Serigrafia</option>
-                                                <option value="Confeção">Confeção</option>
-                                                <option value="Sublimação">Sublimação</option>
-                                                <option value="Corte">Corte</option>
-                                                <option value="Cola">Cola</option>
-                                            </select>
-                                        </div>
+                                        
                                         <div class="mb-3">
                                             <label>
                                                 <input type="checkbox" id="is-chefe"> Definir como Chefe
                                             </label>
                                         </div>
-                                        <div id="mensagem-sucesso" style="display: none; color: green; margin-top: 10px;"></div>
                                         <button type="submit" id="botao-adicionar" class="btn btn-primary">Salvar</button>
+                                        <div id="mensagem-sucesso" style="display: none; color: green; margin-top: 10px;"></div>
+
                                     </form>
                                 </div>
                             </div>
@@ -183,31 +171,80 @@
                 </div>
                 
                 
-                <!-- Tarefas Concluídas -->
-                <div class="tab-pane fade" id="tab-tarefas">
+                <!-- Registros Trabalho -->
+                <div class="tab-pane fade" id="tab-registro_trabalho">
                     <h3>Tarefas Concluídas</h3>
-                    <button class="btn btn-primary mb-3" onclick="listarTarefas()">Atualizar Lista</button>
-                    <ul id="lista-tarefas"></ul>
+                    <button class="btn btn-primary mb-3" onclick="listarRegistro()">Atualizar Lista</button>
+                    <ul id="lista-registro"></ul>
                 
                     <button id="start-scanner-compartilhado" class="btn btn-primary">Iniciar Scanner</button>
                     <div id="reader-compartilhado" style="width: 300px; height: 300px; margin: auto;"></div>
                     <div id="mensagem-qr" style="text-align: center; margin-top: 10px;"></div>
     
+                </div>
                 
-                <!-- Máquinas -->
-                <div class="tab-pane fade" id="tab-maquinas">
-                    <h3>Máquinas</h3>
-                    <p>Em breve...</p>
-                </div>
-                <!-- Tarefas Não Planejadas -->
-                <div class="tab-pane fade" id="tab-nao-planejadas">
-                    <h3>Tarefas Não Planejadas</h3>
-                    <p>Em breve...</p>
-                </div>
-            </div>
-        </div>
-         </div>
+                <!-- Tarefas -->
+                <div class="tab-pane fade" id="tab-tarefas">
+                    <h3>Tarefas</h3>
+                    <ul id="lista-tarefas" class="list-group-item"></ul>
+                
+                    <!-- Botão para abrir o modal -->
+                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAdicionarTarefa">
+                        Adicionar Tarefa
+                    </button>
+                    <div id="mensagem-sucesso-lista" style="display: none; color: green; margin-top: 10px;"></div>
 
+                
+                    <!-- Modal -->
+                    <div class="modal fade" id="modalAdicionarTarefa" tabindex="-1" aria-labelledby="modalAdicionarTarefaLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="modalAdicionarTarefaLabel">Adicionar Nova Tarefa</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <form id="formAdicionarTarefa">
+                                        <div class="mb-3">
+                                            <label for="nomeTarefa" class="form-label">Tarefa:</label>
+                                            <input type="text" class="form-control" id="nomeTarefa" name="nome_tarefa" placeholder="Digite o nome da tarefa" required>
+
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="secao" class="form-label">Secção:</label>
+                                            <select id="secao" class="form-control">
+                                                <option value="" disabled selected>Selecione uma secção ⮟</option>
+                                                <option value="Acabamento">Acabamento</option>
+                                                <option value="Controle de Qualidade">Controle de Qualidade</option>
+                                                <option value="Serigrafia">Serigrafia</option>
+                                                <option value="Confeção">Confeção</option>
+                                                <option value="Sublimação">Sublimação</option>
+                                                <option value="Corte_vinco">Corte e vinco</option>
+                                                <option value="Cola">Cola</option>
+                                                <option value="Bico_pato">Bico de Pato</option>
+                                                <option value="Bolha">Bolha</option>
+                                                <option value="Flexografia">Flexografia</option>
+                                                <option value="Laminagem">Laminagem</option>
+                                                <option value="Maquina_Envelopes">Maquina dos envelopes</option>
+                                                <option value="Maquina_Sacos">Maquina Sacos</option>
+                                                <option value="Expedição">Expedição</option>
+                                                <option value="Faturação">Faturação</option>
+                                            </select>
+                                        </div>
+                                        
+                                            <button type="submit" class="btn btn-primary">Salvar</button>
+                                            <div id="mensagem-sucesso-tarefa" style="display: none; color: green; margin-top: 10px;"></div>
+                                    
+                                    </form>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+            </div>
+         
+        </div>
         
 
         <!-- Funcionário Layout -->

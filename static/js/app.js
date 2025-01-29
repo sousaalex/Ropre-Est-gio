@@ -25,6 +25,13 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("Formulário 'form-adicionar-trabalhador' não encontrado.");
     }
 
+    const formAdicionarTarefa = document.getElementById("formAdicionarTarefa");
+    if (formAdicionarTarefa) {
+        formAdicionarTarefa.addEventListener("submit", adicionarTarefa);
+    } else {
+        console.error("Formulário 'formAdicionarTarefa' não encontrado.");
+    }
+
     // Lista trabalhadores e paletes ao carregar
     listarTrabalhadores();
 
@@ -33,12 +40,17 @@ document.addEventListener("DOMContentLoaded", () => {
     tabs.forEach(tab => {
         tab.addEventListener("shown.bs.tab", function (event) {
             const targetId = event.target.getAttribute("href");
+            console.log(`Aba ativada: ${targetId}`);  // Log para verificar qual aba está sendo ativada
+
+
 
             // Identifica qual aba foi ativada e chama a função correspondente
             if (targetId === "#tab-trabalhadores") {
                 listarTrabalhadores();
             } else if (targetId === "#tab-paletes") {
                 listarPaletes();
+            } else if (targetId === "#tab-registro_trabalho") {
+                listarRegistro();
             } else if (targetId === "#tab-tarefas") {
                 listarTarefas();
             }
@@ -119,6 +131,7 @@ function configurarScanner(tipoUsuario) {
 }
 
 
+
 // Listar Trabalhadores
 function listarTrabalhadores() {
     fetch(`${API_URL}/trabalhadores`)
@@ -139,7 +152,7 @@ function listarTrabalhadores() {
 
                 // Texto do trabalhador
                 const trabalhadorInfo = document.createElement("span");
-                trabalhadorInfo.textContent = `${trabalhador.nome} - Secção: ${trabalhador.secao}`;
+                trabalhadorInfo.textContent = `${trabalhador.nome}`;
                 if (trabalhador.chefe) {
                     trabalhadorInfo.innerHTML += ` <strong>(Chefe)</strong>`;
                     trabalhadorInfo.style.fontWeight = "bold";
@@ -188,11 +201,9 @@ function adicionarTrabalhador(event) {
     }
 
     const nomeInput = document.getElementById("nome-trabalhador");
-    const secaoSelect = document.getElementById("secao-trabalhador");
     const isChefeCheckbox = document.getElementById("is-chefe");
 
     const nome = nomeInput?.value.trim();
-    const secao = secaoSelect?.value;
     const isChefe = isChefeCheckbox?.checked;
 
     // Validação dos campos
@@ -201,10 +212,6 @@ function adicionarTrabalhador(event) {
         return;
     }
 
-    if (!secao) {
-        exibirMensagem("Por favor, selecione uma seção para o trabalhador!", "erro");
-        return;
-    }
 
     // Desabilitar botão enquanto a requisição é feita
     const botaoAdicionar = document.getElementById("botao-adicionar");
@@ -216,7 +223,7 @@ function adicionarTrabalhador(event) {
     fetch(`${API_URL}/trabalhadores`, {
         method: "POST",
         headers: { "Content-Type": "application/json; charset=utf-8" },
-        body: JSON.stringify({ nome, secao, chefe: isChefe }),
+        body: JSON.stringify({ nome, chefe: isChefe }),
     })
         .then((response) => {
             if (botaoAdicionar) {
@@ -258,11 +265,8 @@ function adicionarTrabalhador(event) {
 // Função para limpar o formulário
 function limparFormulario() {
     document.getElementById("nome-trabalhador").value = "";
-    document.getElementById("secao-trabalhador").value = "";
     document.getElementById("is-chefe").checked = false;
 }
-
-
 
 
 
@@ -303,30 +307,159 @@ document.getElementById("nome-trabalhador").addEventListener("keypress", functio
     }
 });
 
-// Detectar Enter no campo de seção
-document.getElementById("secao-trabalhador").addEventListener("keypress", function (event) {
-    if (event.key === "Enter") {
-        adicionarTrabalhador(); // Chama a função de adicionar
-        event.preventDefault(); // Evita comportamento padrão
-    }
-});
 
-// Listar Tarefas
+function adicionarTarefa(event) {
+    // Impedir o comportamento padrão do formulário
+    if (event) {
+        event.preventDefault();
+    }
+
+    // Capturar os valores do formulário
+    const nomeTarefa = document.getElementById("nomeTarefa").value.trim();
+    const secao = document.getElementById("secao").value;
+
+    // Validação dos campos
+    if (!nomeTarefa || !secao) {
+        alert("Por favor, preencha todos os campos obrigatórios!");
+        return;
+    }
+
+    // Enviar os dados para a API
+    fetch(`${API_URL}/tarefas`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify({
+            nome_tarefa: nomeTarefa,
+            secao: secao,
+        }),
+    })
+        .then((response) => {
+            if (!response.ok) {
+                return response.json().then((err) => {
+                    throw new Error(err.message);
+                });
+            }
+            return response.json();
+        })
+        .then((data) => {
+            listarTarefas(); // Atualiza a lista de tarefas
+            document.getElementById("formAdicionarTarefa").reset(); // Limpa o formulário
+
+            // Exibir mensagem de sucesso dentro do modal
+            const mensagemSucesso = document.getElementById("mensagem-sucesso-tarefa");
+            mensagemSucesso.textContent = "Tarefa adicionada com sucesso!";
+            mensagemSucesso.style.display = "block";
+
+            // Esconde a mensagem após 3 segundos
+            setTimeout(() => {
+                mensagemSucesso.style.display = "none";
+                const modal = bootstrap.Modal.getInstance(document.getElementById("modalAdicionarTarefa"));
+            }, 3000);
+        })
+        .catch((error) => {
+            console.error("Erro ao adicionar tarefa:", error.message);
+            alert(`Erro: ${error.message}`);
+        });
+}
+
+
+// Função auxiliar para limpar o formulário de tarefas
+function limparFormularioTarefa() {
+    const nomeTarefaInput = document.getElementById("nome-tarefa");
+    const secaoInput = document.getElementById("secao-tarefa");
+
+    if (nomeTarefaInput) nomeTarefaInput.value = "";
+    if (secaoInput) secaoInput.value = "";
+}
+
+
+
 function listarTarefas() {
-    fetch(`${API_URL}/registro_trabalho`)
+    fetch(`${API_URL}/tarefas`) // Endpoint para obter todas as tarefas
         .then(response => response.json())
         .then(data => {
-            const lista = document.getElementById("lista-tarefas");
-            lista.innerHTML = ""; // Limpa a lista
+            const lista = document.getElementById("lista-tarefas"); // Elemento da lista de tarefas no HTML
+            lista.innerHTML = ""; // Limpa a lista existente
 
-            data.forEach(registro => {
+            data.forEach(tarefa => {
+                // Cria um item da lista para a tarefa
                 const item = document.createElement("li");
-                item.textContent = `Registro ID: ${registro.id}, Trabalhador: ${registro.trabalhador.nome} (ID: ${registro.trabalhador.id}),  (ID: ${registro.palete.id}), Início: ${registro.horario_inicio}, Fim: ${registro.horario_fim || "Em andamento"}`;
+                item.className = "list-group-item"; // Classe para estilização básica
+
+                // Cria o conteúdo do item com as informações da tarefa
+                item.innerHTML = `
+                    <strong>ID:</strong> ${tarefa.id}<br>
+                    <strong>Nome:</strong> ${tarefa.nome}<br>
+                    <strong>Seção:</strong> ${tarefa.secao}<br>
+                `;
+
+
+                // Contêiner para botões
+                const botoesContainer = document.createElement("div");
+                botoesContainer.className = "d-flex justify-content-end gap-2 align-items-center";
+                botoesContainer.style.marginRight = "15px"; // Margem à direita
+
+                // Adiciona botão de baixar QR Code
+                const botaoBaixarPDF = document.createElement("button");
+                botaoBaixarPDF.textContent = "Baixar PDF";
+                botaoBaixarPDF.className = "btn btn-secondary btn-sm";
+                botaoBaixarPDF.onclick = () => {
+                    window.open(`${API_URL}/tarefas/${tarefa.id}/pdf`, "_blank");
+                };
+                botoesContainer.appendChild(botaoBaixarPDF);
+
+                // Adiciona botão de remover
+                const botaoRemover = document.createElement("button");
+                botaoRemover.textContent = "Remover";
+                botaoRemover.className = "btn btn-danger btn-sm";
+                botaoRemover.onclick = () => removerTarefa(tarefa.id);
+                botoesContainer.appendChild(botaoRemover);
+
+                // Adiciona o contêiner de botões ao item
+                item.appendChild(botoesContainer);
+
+                // Adiciona o item à lista
                 lista.appendChild(item);
+
             });
         })
-        .catch(error => console.error("Erro ao carregar os registros de trabalho:", error));
+        .catch(error => console.error("Erro ao listar tarefas:", error));
 }
+
+function removerTarefa(tarefaId) {
+
+    // Exibe uma caixa de confirmação antes de remover
+    if (!confirm("Tem certeza de que deseja remover esta tarefa?")) {
+        return; // Cancela a remoção se o usuário não confirmar
+    }
+
+
+    fetch(`${API_URL}/tarefas/${tarefaId}`, {
+        method: "DELETE"
+    })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error("Erro ao remover tarefa");
+            }
+            listarTarefas(); // Atualiza a lista após a remoção
+
+            // Exibir mensagem de sucesso abaixo da lista de tarefas
+            const mensagemSucesso = document.getElementById("mensagem-sucesso-lista");
+            mensagemSucesso.textContent = "Tarefa removida com sucesso!";
+            mensagemSucesso.style.display = "block";
+
+            // Esconde a mensagem após 3 segundos
+            setTimeout(() => {
+                mensagemSucesso.style.display = "none";
+            }, 3000);
+        })
+        .catch(error => console.error("Erro ao remover tarefa:", error));
+}
+
+
+
+
+
 
 
 
@@ -421,10 +554,6 @@ function adicionarPalete() {
 
 
 
-
-
-
-
 // Função para limpar o formulário
 function limparFormularioPalete() {
     document.getElementById("produto-palete").value = "";
@@ -433,8 +562,6 @@ function limparFormularioPalete() {
     document.getElementById("quantidade-palete").value = "";
     document.getElementById("referencia-palete").value = "";
 }
-
-
 
 
 
@@ -546,47 +673,13 @@ function listarPaletes() {
 
 
 
+let dadosRegistro = {
+    tarefa: null,
+    trabalhador: null,
+    palete: null
+};
 
-
-
-
-
-
-
-
-function autenticarChefe() {
-    const idChefe = document.getElementById("id-chefe").value.trim();
-    const senhaChefe = document.getElementById("senha-chefe").value.trim();
-
-    if (!idChefe || !senhaChefe) {
-        alert("Por favor, preencha todos os campos!");
-        return;
-    }
-
-    fetch(`${API_URL}/chefes/login`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: idChefe, senha: senhaChefe }),
-    })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => { throw new Error(err.message); });
-            }
-            return response.json();
-        })
-        .then(data => {
-            const mensagem = document.getElementById("mensagem-autenticacao");
-            mensagem.textContent = data.message;
-            mensagem.style.color = "green";
-            alert(`Bem-vindo, ${data.nome}! Você tem acesso a recursos adicionais.`);
-        })
-        .catch(error => {
-            const mensagem = document.getElementById("mensagem-autenticacao");
-            mensagem.textContent = error.message;
-            mensagem.style.color = "red";
-        });
-}
-
+let estadoLeitura = "tarefa"; // Define o estado inicial como "tarefa"
 
 // Inicializa o leitor de QR Code
 function startQRCodeScanner(readerId) {
@@ -601,22 +694,125 @@ function startQRCodeScanner(readerId) {
 
     html5QrCode
         .start(
-            { facingMode: "user" },//user-> camera frontal<->environment->camera traseira
+            { facingMode: "environment" }, // Usa a câmera traseira
             config,
-            (decodedText) => {
-                console.log("QR Code lido:", decodedText);
-                alert(`QR Code lido: ${decodedText}`);
-            },
-            (errorMessage) => {
-                console.warn("Erro ao ler QR Code:", errorMessage);
-            }
+            (decodedText) => processQRCode(decodedText),
+            (errorMessage) => console.warn("Erro ao ler QR Code:", errorMessage)
         )
         .catch((err) => console.error("Erro ao iniciar o scanner:", err));
 }
 
-
-// Processar texto do QR Code lido
+// Processar leitura dos QR Codes
 function processQRCode(decodedText) {
-    console.log("Dados do QR Code:", decodedText);
-    // Exemplo: Enviar para a API ou processar localmente
+    console.log("Estado atual:", estadoLeitura);
+    console.log("QR Code lido:", decodedText);
+
+    if (estadoLeitura === "tarefa" && !dadosRegistro.tarefa) {
+        dadosRegistro.tarefa = decodedText;
+        estadoLeitura = "trabalhador"; // Atualiza o estado
+        exibirMensagemRegistro("📌 Tarefa lida com sucesso! Agora escaneie o cartão do trabalhador.", "info");
+
+    } else if (estadoLeitura === "trabalhador" && !dadosRegistro.trabalhador) {
+        dadosRegistro.trabalhador = decodedText;
+        estadoLeitura = "palete"; // Atualiza o estado
+        exibirMensagemRegistro("📌 Trabalhador lido com sucesso! Agora escaneie a palete.", "info");
+
+    } else if (estadoLeitura === "palete" && !dadosRegistro.palete) {
+        dadosRegistro.palete = decodedText;
+        exibirMensagemRegistro("✅ Palete lida com sucesso! Registrando trabalho...", "sucesso");
+
+        // Enviar os dados para a API
+        registrarTrabalho();
+
+        // Resetar os dados para um novo registro
+        setTimeout(() => {
+            dadosRegistro = { tarefa: null, trabalhador: null, palete: null };
+            estadoLeitura = "tarefa"; // Reinicia o estado
+            exibirMensagemRegistro("📷 Escaneie o QR Code da tarefa para iniciar um novo registro.", "info");
+        }, 3000);
+    } else {
+        exibirMensagemRegistro("⚠️ QR Code já lido ou fora de sequência. Escaneie o próximo QR Code.", "erro");
+    }
+}
+
+// Função para enviar os dados do registro para a API
+function registrarTrabalho() {
+    console.log("Dados preparados para envio:", JSON.stringify(dadosRegistro));
+
+    fetch(`${API_URL}/registro_trabalho`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json; charset=utf-8" },
+        body: JSON.stringify({
+            tarefa_qr: dadosRegistro.tarefa,
+            trabalhador_qr: dadosRegistro.trabalhador,
+            palete_qr: dadosRegistro.palete
+        })
+    })
+        .then(response => response.json())
+        .then(data => {
+            console.log("Resposta da API:", data);
+            exibirMensagemRegistro(`✅ ${data.message}`, "sucesso");
+        })
+        .catch(error => {
+            console.error("Erro ao registrar trabalho:", error);
+            exibirMensagemRegistro("❌ Erro ao registrar trabalho. Tente novamente.", "erro");
+        });
+}
+
+// Exibir mensagens de progresso no registro
+function exibirMensagemRegistro(mensagem, tipo = "info") {
+    console.log("Mensagem exibida:", mensagem); // Log da mensagem para depuração
+
+    const mensagemRegistro = document.getElementById("mensagem-registro");
+    if (!mensagemRegistro) {
+        console.error("Elemento para mensagens de registro não encontrado.");
+        return;
+    }
+
+    mensagemRegistro.textContent = mensagem;
+    mensagemRegistro.style.display = "block";
+    mensagemRegistro.style.color = tipo === "sucesso" ? "green" : tipo === "erro" ? "red" : "black";
+}
+
+
+
+
+// Listar Registros de Trabalho
+function listarRegistro() {
+    fetch(`${API_URL}/registro_trabalho`)
+        .then(response => response.json())
+        .then(data => {
+            const lista = document.getElementById("lista-registro");
+            lista.innerHTML = ""; // Limpa a lista
+
+            data.forEach(registroDia => {
+                const diaItem = document.createElement("li");
+                diaItem.innerHTML = `<h4>📅 ${registroDia.data}</h4>`;
+                lista.appendChild(diaItem);
+
+                Object.entries(registroDia.paletes_trabalhadas).forEach(([paleteId, paleteData]) => {
+                    const paleteItem = document.createElement("ul");
+                    paleteItem.innerHTML = `<strong>📦 Palete ID:</strong> ${paleteId}`;
+                    diaItem.appendChild(paleteItem);
+
+                    Object.entries(paleteData.secoes).forEach(([secaoNome, secaoData]) => {
+                        const secaoItem = document.createElement("li");
+                        secaoItem.innerHTML = `<h5>📍 Seção: ${secaoNome}</h5>`;
+                        paleteItem.appendChild(secaoItem);
+
+                        Object.entries(secaoData.tarefas).forEach(([tarefaId, tarefaInfo]) => {
+                            const tarefaItem = document.createElement("ul");
+                            tarefaItem.innerHTML = `
+                                <li>⚙️ <strong>${tarefaInfo.nome}</strong></li>
+                                <li>👷 Trabalhador: ${tarefaInfo.trabalhador_id}</li>
+                                <li>⏳ Início: ${tarefaInfo.hora_inicio}</li>
+                                <li>✅ Fim: ${tarefaInfo.hora_fim || "Em andamento"}</li>
+                            `;
+                            secaoItem.appendChild(tarefaItem);
+                        });
+                    });
+                });
+            });
+        })
+        .catch(error => console.error("Erro ao carregar os registros de trabalho:", error));
 }

@@ -107,20 +107,18 @@ def add_trabalhador():
     try:
         data = request.get_json()
         nome = data.get('nome')
-        secao = data.get('secao')
         is_chefe = data.get('chefe', False)
 
-        if not nome or not secao:
-            return jsonify({'message': 'Nome e seção são obrigatórios.'}), 400
+        if not nome:
+            return jsonify({'message': 'Nome do trabalhador é obrigatório'}), 400
 
         # Gerar QR Code em Base64
-        conteudo_qr = f"ID: {nome}\nSeção: {secao}\nChefe: {is_chefe}"
+        conteudo_qr = f"ID: {nome}\nChefe: {is_chefe}"
         qr_code_base64 = gerar_qr_code_base64(conteudo_qr)
 
         # Adicionar trabalhador ao Firestore
         trabalhador_ref = db.collection('trabalhadores').add({
             'nome': nome,
-            'secao': secao,
             'chefe': is_chefe,
             'qr_code': qr_code_base64
         })
@@ -176,17 +174,14 @@ def gerar_cartao_pdf(trabalhador_id):
 
         # Textos com informações do trabalhador
         nome_texto = f"Nome: {trabalhador['nome']}"
-        secao_texto = f"Seção: {trabalhador['secao']}"
         chefe_texto = f"Chefe: {'Sim' if trabalhador.get('chefe', False) else 'Não'}"
 
         # Calcular larguras para centralização
         nome_width = pdf.stringWidth(nome_texto, "Helvetica", 12)
-        secao_width = pdf.stringWidth(secao_texto, "Helvetica", 12)
         chefe_width = pdf.stringWidth(chefe_texto, "Helvetica", 12)
 
         # Desenhar textos centralizados
         pdf.drawString((largura - nome_width) / 2, y_info_start, nome_texto)
-        pdf.drawString((largura - secao_width) / 2, y_info_start - line_spacing, secao_texto)
         pdf.drawString((largura - chefe_width) / 2, y_info_start - 2 * line_spacing, chefe_texto)
 
         # Finalizar o PDF
@@ -294,16 +289,16 @@ def gerar_pdf_palete(palete_id):
         largura, altura = A4  # Dimensões do papel A4 em pontos
 
         # Adicionar QR Code no topo
-        qr_code_size = 150  # Tamanho do QR Code
+        qr_code_size = 250  # Tamanho do QR Code
         qr_code_buffer = BytesIO()
         qr_code_img = qr_code_img.resize((qr_code_size, qr_code_size))
         qr_code_img.save(qr_code_buffer, format="PNG")
-        pdf.drawImage(ImageReader(qr_code_buffer), (largura - qr_code_size) / 2, altura - 200, width=qr_code_size, height=qr_code_size)
+        pdf.drawImage(ImageReader(qr_code_buffer), (largura - qr_code_size) / 2, altura - 260, width=qr_code_size, height=qr_code_size)
 
         # Adicionar informações da palete abaixo do QR Code
         pdf.setFont("Helvetica", 20)
         x_info_start = 50  # Posição fixa no eixo X (margem esquerda)
-        y_info_start = altura - 250
+        y_info_start = altura - 300
         line_spacing = 25
 
         informacoes = [
@@ -378,6 +373,138 @@ def delete_palete(palete_id):
         return jsonify({'message': 'Erro ao remover palete', 'details': str(e)}), 500
 
 
+# Rota para listar tarefas
+@app.route('/tarefas', methods=['GET'])
+def get_tarefas():
+    try:
+        # Buscar todas as tarefas no Firestore
+        tarefas_ref = db.collection('tarefas').stream()
+        
+        # Criar a lista de tarefas com seus dados
+        tarefas = [{'id': doc.id, **doc.to_dict()} for doc in tarefas_ref]
+        
+        # Retornar as tarefas como resposta JSON
+        return jsonify(tarefas), 200
+    except Exception as e:
+        print(f"Erro ao listar tarefas: {e}")
+        return jsonify({'message': 'Erro ao listar tarefas.', 'details': str(e)}), 500
+
+
+
+# Rota para gerar QR Code de tarefas
+@app.route('/tarefas', methods=['POST'])
+def add_tarefa():
+    try:
+        data = request.get_json()
+        nome_tarefa = data.get('nome_tarefa')
+        secao = data.get('secao')
+
+        if not nome_tarefa or not secao:
+            return jsonify({'message': 'Nome da tarefa e secção são obrigatórios.'}), 400
+
+        # Gerar QR Code para a tarefa
+        qr_code_data = f"Tarefa: {nome_tarefa}\nSecção: {secao}"
+        qr_code_base64 = gerar_qr_code_base64(qr_code_data)
+
+        # Salvar a tarefa no Firestore
+        tarefa_data = {
+            'nome': nome_tarefa, 
+           'secao':secao,
+           'qr_code': qr_code_base64
+        }
+        tarefa_ref = db.collection('tarefas').add(tarefa_data)
+
+        return jsonify({
+            'message': 'Tarefa adicionada com sucesso!',
+            'tarefa_id': tarefa_ref[1].id,
+            'qr_code': qr_code_base64
+        }), 201
+    except Exception as e:
+        print(f"Erro ao adicionar tarefa: {e}")
+        return jsonify({'message': 'Erro ao adicionar tarefa.', 'details': str(e)}), 500
+
+
+# Rota para gerar o PDF da tarefa
+@app.route('/tarefas/<string:tarefa_id>/pdf', methods=['GET'])
+def gerar_pdf_tarefa(tarefa_id):
+    try:
+        # Buscar informações da tarefa no Firestore
+        tarefa_ref = db.collection('tarefas').document(tarefa_id).get()
+        if not tarefa_ref.exists:
+            return jsonify({'message': 'Tarefa não encontrada.'}), 404
+
+        tarefa = tarefa_ref.to_dict()
+
+        # Gerar QR Code a partir do Base64
+        qr_code_base64 = tarefa['qr_code']
+        qr_code_data = base64.b64decode(qr_code_base64)
+        qr_code_img = Image.open(BytesIO(qr_code_data))
+
+       # Configurações do PDF
+        temp_dir = tempfile.gettempdir()
+        pdf_path = os.path.join(temp_dir, f"tarefa_{tarefa_id}.pdf")
+        pdf = canvas.Canvas(pdf_path, pagesize=(14 * cm, 21 * cm))
+        largura, altura = (14 * cm, 21 * cm)  # Dimensões do papel A5 em pontos
+
+        # Adicionar QR Code no topo, maior e centralizado
+        qr_code_size = 300  # Tamanho do QR Code maior
+        qr_code_buffer = BytesIO()
+        qr_code_img = qr_code_img.resize((qr_code_size, qr_code_size))
+        qr_code_img.save(qr_code_buffer, format="PNG")
+        pdf.drawImage(
+            ImageReader(qr_code_buffer),
+            (largura - qr_code_size) / 2,  # Centralizar horizontalmente
+            altura - qr_code_size - 50,   # Distância do topo
+            width=qr_code_size,
+            height=qr_code_size
+        )
+
+        # Adicionar informações da tarefa abaixo do QR Code, maiores
+        pdf.setFont("Helvetica", 20)  # Fonte maior e negrito
+        y_info_start = altura - qr_code_size - 100  # Ajustar para abaixo do QR Code
+        line_spacing = 30  # Maior espaçamento entre linhas
+
+        informacoes = [
+            f"Nome da Tarefa: {tarefa['nome']}",
+            f"Seção: {tarefa.get('secao', 'Não especificada')}",
+        ]
+
+        # Adicionar as informações ao PDF
+        for info in informacoes:
+            pdf.drawString(30, y_info_start, info)  # Alinhar o texto à esquerda
+            y_info_start -= line_spacing
+
+        # Finalizar e salvar o PDF
+        pdf.save()
+
+
+        # Retornar o PDF como arquivo para download
+        return send_from_directory(temp_dir, f"tarefa_{tarefa_id}.pdf", as_attachment=True)
+
+    except Exception as e:
+        print(f"Erro ao gerar PDF da tarefa: {e}")
+        return jsonify({'message': 'Erro ao gerar PDF.', 'details': str(e)}), 500
+    
+
+    # Rota para remover tarefa
+@app.route('/tarefas/<string:tarefa_id>', methods=['DELETE'])
+def delete_tarefa(tarefa_id):
+    try:
+        # Buscar a tarefa pelo ID no Firestore
+        tarefa_ref = db.collection('tarefas').document(tarefa_id)
+        tarefa = tarefa_ref.get()
+        if not tarefa.exists:
+            return jsonify({'message': 'Tarefa não encontrada'}), 404
+
+        # Remover a tarefa do Firestore
+        tarefa_ref.delete()
+
+        return jsonify({'message': 'Tarefa removida com sucesso!'}), 200
+    except Exception as e:
+        print(f"Erro ao remover tarefa: {e}")
+        return jsonify({'message': 'Erro ao remover tarefa.', 'details': str(e)}), 500
+
+    
 
 
 # Rota para listar todos os registros de trabalho
@@ -385,178 +512,170 @@ def delete_palete(palete_id):
 def get_registro_trabalho():
     try:
         registros_ref = db.collection('registros_trabalho').stream()
-        registros = []
-        for r in registros_ref:
-            registro = r.to_dict()
-            registros.append({
-                'id': r.id,
-                'trabalhador': {'id': registro['trabalhador_id'], 'nome': registro['trabalhador_nome']},
-                'palete': {'id': registro['palete_id'], 'nome_produto': registro['palete_nome']},
-                'horario_inicio': registro['horario_inicio'],
-                'horario_fim': registro.get('horario_fim')
-            })
+        registros = {}
 
-        print(f"GET /registro_trabalho - {len(registros)} registros encontrados")
-        return jsonify(registros), 200
+        for dia_doc in registros_ref:
+            dia_data = dia_doc.to_dict().get('data', 'Desconhecido')
+            dia_id = dia_doc.id
+
+            # Inicializar a estrutura para o dia
+            if dia_data not in registros:
+                registros[dia_data] = {
+                    "data": dia_data,
+                    "paletes_trabalhadas": {}
+                }
+
+            # Obter as paletes trabalhadas no dia
+            paletes_ref = db.collection('registros_trabalho').document(dia_id).collection('paletes_trabalhadas').stream()
+
+            for palete_doc in paletes_ref:
+                palete_id = palete_doc.id
+                palete_data = palete_doc.to_dict()
+
+                # Inicializar a estrutura para a palete
+                if palete_id not in registros[dia_data]["paletes_trabalhadas"]:
+                    registros[dia_data]["paletes_trabalhadas"][palete_id] = {
+                        "secoes": {}  # Adicionando a estrutura de secões
+                    }
+
+                # Obter as seções dentro da palete
+                secoes_ref = db.collection('registros_trabalho').document(dia_id).collection('paletes_trabalhadas').document(palete_id).collection('secoes').stream()
+
+                for secao_doc in secoes_ref:
+                    secao_nome = secao_doc.id
+                    secao_data = secao_doc.to_dict()
+
+                    # Inicializar a estrutura para a seção
+                    if secao_nome not in registros[dia_data]["paletes_trabalhadas"][palete_id]["secoes"]:
+                        registros[dia_data]["paletes_trabalhadas"][palete_id]["secoes"][secao_nome] = {
+                            "tarefas": {}
+                        }
+
+                    # Obter as tarefas dentro da seção
+                    tarefas_ref = db.collection('registros_trabalho').document(dia_id).collection('paletes_trabalhadas').document(palete_id).collection('secoes').document(secao_nome).collection('tarefas').stream()
+
+                    for tarefa_doc in tarefas_ref:
+                        tarefa_id = tarefa_doc.id
+                        tarefa_data = tarefa_doc.to_dict()
+
+                        # Adicionar a tarefa à seção
+                        registros[dia_data]["paletes_trabalhadas"][palete_id]["secoes"][secao_nome]["tarefas"][tarefa_id] = {
+                            "nome": tarefa_data.get('nome', 'Nome Desconhecido'),
+                            "trabalhador_id": tarefa_data.get('trabalhador_id', 'ID Desconhecido'),
+                            "hora_inicio": tarefa_data.get('hora_inicio', 'Não informado'),
+                            "hora_fim": tarefa_data.get('hora_fim', 'Em andamento')
+                        }
+
+        # Retornar os registros como uma lista
+        registros_list = list(registros.values())
+        return jsonify(registros_list), 200
+
     except Exception as e:
         print(f"Erro ao listar registros de trabalho: {e}")
         return jsonify({'message': 'Erro ao listar registros de trabalho.', 'details': str(e)}), 500
 
+        return jsonify({'message': 'Erro ao listar registros de trabalho.', 'details': str(e)}), 500
 
-# Rota para registrar início ou fim de trabalho
+
+
+# Função para formatar a data sem o "+00:00"
+def formatar_horario():
+    return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+# Rota para registrar trabalho com tarefa, trabalhador e palete
 @app.route('/registro_trabalho', methods=['POST'])
-def registro_trabalho():
+def registrar_trabalho():
     try:
         data = request.get_json()
 
-        # Validação dos dados enviados
-        trabalhador_qr = data.get('trabalhador_qr')  # QR Code do trabalhador
-        palete_qr = data.get('palete_qr')  # QR Code da palete
+        # Leitura dos QR Codes
+        tarefa_qr = data.get('tarefa_qr')
+        trabalhador_qr = data.get('trabalhador_qr')
+        palete_qr = data.get('palete_qr')
 
-        if not trabalhador_qr:
-            return jsonify({'message': 'QR Code do trabalhador não fornecido.'}), 400
-        if not palete_qr:
-            return jsonify({'message': 'QR Code da palete não fornecido.'}), 400
+        if not tarefa_qr or not trabalhador_qr or not palete_qr:
+            return jsonify({'message': 'QR Codes de tarefa, trabalhador e palete são obrigatórios.'}), 400
 
-        # Extrair IDs do QR Code
-        try:
-            trabalhador_id = trabalhador_qr.split(';')[0].replace('ID', '').strip()
-            palete_id = palete_qr.split(';')[0].replace('ID', '').strip()
-        except (IndexError, ValueError):
-            return jsonify({'message': 'QR Code inválido.'}), 400
+        # Extrair IDs dos QR Codes
+        tarefa_id = tarefa_qr.split(';')[0].replace('ID:', '').strip()
+        trabalhador_id = trabalhador_qr.split(';')[0].replace('ID:', '').strip()
+        palete_id = palete_qr.split(';')[0].replace('ID:', '').strip()
+        secao = palete_qr.split(';')[1].replace('Secao:', '').strip()  # Capturar a seção corretamente
 
+        # Validar tarefa no Firestore
+        tarefa_ref = db.collection('tarefas').document(tarefa_id).get()
+        if not tarefa_ref.exists:
+            return jsonify({'message': f'Tarefa com ID {tarefa_id} não encontrada.'}), 404
+        tarefa = tarefa_ref.to_dict()
+        
         # Validar trabalhador no Firestore
         trabalhador_ref = db.collection('trabalhadores').document(trabalhador_id).get()
         if not trabalhador_ref.exists:
             return jsonify({'message': f'Trabalhador com ID {trabalhador_id} não encontrado.'}), 404
-        trabalhador = trabalhador_ref.to_dict()
 
-        # Validar palete no Firestore
-        palete_ref = db.collection('paletes').document(palete_id).get()
-        if not palete_ref.exists:
-            return jsonify({'message': f'Palete com ID {palete_id} não encontrada.'}), 404
-        palete = palete_ref.to_dict()
+        # Data do registro
+        data_atual = datetime.now(timezone.utc).strftime('%Y-%m-%d')
 
-        # Verificar se há um trabalho em andamento para o trabalhador
-        registros_ref = db.collection('registros_trabalho').where('trabalhador_id', '==', trabalhador_id).where('horario_fim', '==', None).stream()
-        registro_existente = next((r.to_dict() for r in registros_ref), None)
+        # Referência do dia no Firestore
+        dia_ref = db.collection('registros_trabalho').document(data_atual)
 
-        if registro_existente:
-            # Finalizar trabalho existente
-            registro_id = registro_existente['id']
-            db.collection('registros_trabalho').document(registro_id).update({
-                'horario_fim': datetime.now(timezone.utc).isoformat()
-            })
+        # Verificar se o documento do dia existe, senão criar
+        dia_doc = dia_ref.get()
+        if not dia_doc.exists:
+            dia_ref.set({'data': data_atual})
 
+        # Referência da palete dentro do dia
+        palete_ref = dia_ref.collection('paletes_trabalhadas').document(palete_id)
+
+        # Verificar se o documento da palete existe, senão criar
+        palete_doc = palete_ref.get()
+        if not palete_doc.exists:
+            palete_ref.set({'secao': secao})  # Agora a seção é um campo dentro da palete
+
+        # **CORREÇÃO IMPORTANTE**
+        # Garantir que cada secção tenha suas próprias tarefas dentro da palete
+        secao_ref = palete_ref.collection('secoes').document(secao)
+
+        # Verificar se a seção existe dentro da palete
+        secao_doc = secao_ref.get()
+        if not secao_doc.exists:
+            secao_ref.set({'nome': secao})
+
+        # Referência da tarefa dentro da seção da palete
+        tarefa_ref = secao_ref.collection('tarefas').document(tarefa_id)
+
+        # Verificar se a tarefa já foi iniciada (para marcar o fim)
+        tarefa_doc = tarefa_ref.get()
+        if tarefa_doc.exists:
+            tarefa_ref.update({'hora_fim': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')})
             return jsonify({
-                'registro_id': registro_id,
-                'trabalhador': trabalhador['nome'],
-                'palete': palete['nome_produto'],
-                'horario_inicio': registro_existente['horario_inicio'],
-                'horario_fim': datetime.now(timezone.utc).isoformat(),
-                'message': 'Trabalho finalizado com sucesso.'
+                'message': 'Tarefa finalizada com sucesso!',
+                'tarefa_id': tarefa_id,
+                'trabalhador_id': trabalhador_id,
+                'palete_id': palete_id,
+                'secao': secao
             }), 200
 
-        # Criar novo registro de trabalho
-        novo_registro = {
+        # Se a tarefa ainda não existe, registrar o início
+        registro_tarefa = {
+            'nome': tarefa['nome'],
             'trabalhador_id': trabalhador_id,
-            'trabalhador_nome': trabalhador['nome'],
-            'palete_id': palete_id,
-            'palete_nome': palete['nome_produto'],
-            'horario_inicio': datetime.now(timezone.utc).isoformat(),
-            'horario_fim': None
+            'hora_inicio': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
+            'hora_fim': None  # Hora de fim será atualizada posteriormente
         }
-        registro_ref = db.collection('registros_trabalho').add(novo_registro)
+        tarefa_ref.set(registro_tarefa)
 
         return jsonify({
-            'registro_id': registro_ref[1].id,
-            'trabalhador': trabalhador['nome'],
-            'palete': palete['nome_produto'],
-            'horario_inicio': novo_registro['horario_inicio'],
-            'horario_fim': None,
-            'message': 'Trabalho iniciado com sucesso.'
+            'message': 'Registro de trabalho adicionado com sucesso!',
+            'tarefa_id': tarefa_id,
+            'trabalhador_id': trabalhador_id,
+            'palete_id': palete_id,
+            'secao': secao
         }), 201
 
     except Exception as e:
         print(f"Erro ao registrar trabalho: {e}")
         return jsonify({'message': 'Erro ao registrar trabalho.', 'details': str(e)}), 500
-
-
-
-
-
-# Rota para definir senha do chefe
-@app.route('/chefes/definir_senha', methods=['POST'])
-def definir_senha_chefe():
-    try:
-        data = request.get_json()
-        id_trabalhador = data.get('id')
-        nova_senha = data.get('senha')
-
-        if not nova_senha or len(nova_senha) < 6:
-            return jsonify({'message': 'A senha deve ter pelo menos 6 caracteres.'}), 400
-
-        # Busca o trabalhador na coleção do Firestore
-        trabalhador_ref = db.collection('trabalhadores').document(id_trabalhador).get()
-        if not trabalhador_ref.exists:
-            return jsonify({'message': 'Chefe não encontrado ou não autorizado.'}), 404
-
-        trabalhador = trabalhador_ref.to_dict()
-
-        if not trabalhador.get('chefe', False):
-            return jsonify({'message': 'O trabalhador não é um chefe autorizado.'}), 403
-
-        if 'senha_hash' in trabalhador:
-            return jsonify({'message': 'Senha já definida.'}), 400
-
-        # Define a senha e atualiza no Firestore
-        senha_hash = generate_password_hash(nova_senha)
-        db.collection('trabalhadores').document(id_trabalhador).update({
-            'senha_hash': senha_hash
-        })
-
-        return jsonify({'message': 'Senha definida com sucesso!'}), 200
-    except Exception as e:
-        print(f"Erro ao definir senha: {e}")
-        return jsonify({'message': 'Erro ao definir senha.', 'details': str(e)}), 500
-
-
-# Rota para login do chefe
-@app.route('/chefes/login', methods=['POST'])
-def login_chefe():
-    try:
-        data = request.get_json()
-        id_trabalhador = data.get('id')
-        senha = data.get('senha')
-
-        if not id_trabalhador or not senha:
-            return jsonify({'message': 'ID e senha são obrigatórios.'}), 400
-
-        # Busca o trabalhador na coleção do Firestore
-        trabalhador_ref = db.collection('trabalhadores').document(id_trabalhador).get()
-        if not trabalhador_ref.exists:
-            return jsonify({'message': 'Chefe não encontrado ou não autorizado.'}), 404
-
-        trabalhador = trabalhador_ref.to_dict()
-
-        if not trabalhador.get('chefe', False):
-            return jsonify({'message': 'O trabalhador não é um chefe autorizado.'}), 403
-
-        if 'senha_hash' not in trabalhador:
-            return jsonify({'message': 'Senha não definida. Por favor, defina uma senha.'}), 400
-
-        # Verifica a senha
-        if not check_password_hash(trabalhador['senha_hash'], senha):
-            return jsonify({'message': 'Senha incorreta.'}), 401
-
-        return jsonify({
-            'message': 'Login bem-sucedido!',
-            'nome': trabalhador['nome'],
-            'secao': trabalhador['secao']
-        }), 200
-    except Exception as e:
-        print(f"Erro ao autenticar chefe: {e}")
-        return jsonify({'message': 'Erro ao autenticar chefe.', 'details': str(e)}), 500
 
 
 
