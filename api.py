@@ -169,7 +169,7 @@ def gerar_cartao_pdf(trabalhador_id, tipo_cartao):
             titulo_cartao = "Cartão de Chefe"
         else:
             qr_code_base64 = trabalhador.get('qr_code_trabalhador')
-            cor_cartao = colors.blue  # Cartão azul para trabalhadores
+            cor_cartao = colors.whitesmoke  # Cartão branco para trabalhadores
             titulo_cartao = "Cartão de Trabalhador"
 
         if not qr_code_base64:
