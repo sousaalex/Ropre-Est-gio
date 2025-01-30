@@ -159,10 +159,13 @@ function listarTrabalhadores() {
 
                 // Texto do trabalhador
                 const trabalhadorInfo = document.createElement("span");
-                trabalhadorInfo.textContent = `${trabalhador.nome}`;
+                trabalhadorInfo.innerHTML = `
+                <strong>ID:</strong> ${trabalhador.id}<br>
+                <strong>Nome:</strong> ${trabalhador.nome}
+                `;
                 if (trabalhador.chefe) {
-                    trabalhadorInfo.innerHTML += ` <strong>(Chefe)</strong>`;
-                    trabalhadorInfo.style.fontWeight = "bold";
+                trabalhadorInfo.innerHTML += ` <strong>(Chefe)</strong>`;
+                trabalhadorInfo.style.fontWeight = "bold";
                 }
                 item.appendChild(trabalhadorInfo);
 
@@ -171,14 +174,27 @@ function listarTrabalhadores() {
                 buttonContainer.className = "d-flex gap-2";
 
                 // Botão de download do cartão de trabalhador
-                const botaoDownloadTrabalhador = document.createElement("button-trabalhadores");
+                const botaoDownloadTrabalhador = document.createElement("button");
                 botaoDownloadTrabalhador.className = "btn btn-secondary btn-sm";
                 botaoDownloadTrabalhador.innerHTML = `<i class="bi bi-download"></i> Cartão Trabalhador`;
                 botaoDownloadTrabalhador.onclick = () => {
-                    const linkTrabalhador = `${API_URL}/cartao/${trabalhador.id}`;
+                    const linkTrabalhador = `${API_URL}/cartao/${trabalhador.id}/trabalhador`;
                     window.open(linkTrabalhador, "_blank");
                 };
                 buttonContainer.appendChild(botaoDownloadTrabalhador);
+
+                // Se for chefe, criar também o botão de download do cartão de chefe
+                if (trabalhador.chefe) {
+                    const botaoDownloadChefe = document.createElement("button");
+                    botaoDownloadChefe.className = "btn btn-secondary btn-sm"; 
+                    botaoDownloadChefe.innerHTML = `<i class="bi bi-download"></i> Cartão Chefe`;
+                    botaoDownloadChefe.onclick = () => {
+                        const linkChefe = `${API_URL}/cartao/${trabalhador.id}/chefe`;
+                        window.open(linkChefe, "_blank");
+                    };
+                    buttonContainer.appendChild(botaoDownloadChefe);
+                }
+
 
                 // Botão de remover
                 const botaoRemover = document.createElement("button-trabalhadores");
@@ -408,7 +424,7 @@ function listarTarefas() {
 
                 // Adiciona botão de baixar QR Code
                 const botaoBaixarPDF = document.createElement("button");
-                botaoBaixarPDF.textContent = "Baixar PDF";
+                botaoBaixarPDF.innerHTML = '<i class="bi bi-download"></i> Baixar PDF';
                 botaoBaixarPDF.className = "btn btn-secondary btn-sm";
                 botaoBaixarPDF.onclick = () => {
                     window.open(`${API_URL}/tarefas/${tarefa.id}/pdf`, "_blank");
@@ -687,8 +703,9 @@ let dadosRegistro = {
 };
 
 let estadoLeitura = "tarefa"; // Define o estado inicial como "tarefa"
+let scannerAtivo = false; // Evita múltiplas inicializações
 
-// Inicializa o leitor de QR Code
+// **Inicializa o scanner de QR Code**
 function startQRCodeScanner(readerId) {
     const readerElement = document.getElementById(readerId);
     if (!readerElement) {
@@ -696,56 +713,100 @@ function startQRCodeScanner(readerId) {
         return;
     }
 
+    if (scannerAtivo) return; // Evita iniciar o scanner mais de uma vez
+    scannerAtivo = true;
+
+    exibirMensagemRegistro("📷 Escaneie o QR Code da Tarefa para começar.", "info");
+    atualizarProgresso(0); // Reinicia a barra de progresso
+
     const html5QrCode = new Html5Qrcode(readerId);
     const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
     html5QrCode
         .start(
-            { facingMode: "environment" }, // Usa a câmera traseira
+            { facingMode: "environment" },
             config,
-            (decodedText) => processQRCode(decodedText),
-            (errorMessage) => console.warn("Erro ao ler QR Code:", errorMessage)
+            (decodedText) => processQRCode(decodedText, html5QrCode),
+            (errorMessage) => {
+                if (!errorMessage.includes("No MultiFormat Readers were able to detect the code.")) {
+                    console.warn("Erro ao ler QR Code:", errorMessage);
+                }
+            }
         )
         .catch((err) => console.error("Erro ao iniciar o scanner:", err));
 }
 
-// Processar leitura dos QR Codes
-function processQRCode(decodedText) {
-    console.log("Estado atual:", estadoLeitura);
+// **Processar a leitura dos QR Codes**
+function processQRCode(decodedText, scanner) {
     console.log("QR Code lido:", decodedText);
 
-    if (estadoLeitura === "tarefa" && !dadosRegistro.tarefa) {
-        dadosRegistro.tarefa = decodedText;
-        estadoLeitura = "trabalhador"; // Atualiza o estado
+    // **Analisar o QR Code**
+    const { tipoQR, idQR, secao } = identificarTipoQR(decodedText);
+
+    console.log("Tipo identificado:", tipoQR, "ID:", idQR, "Seção:", secao);
+
+    if (tipoQR === "desconhecido") {
+        exibirMensagemRegistro("⚠️ QR Code não reconhecido. Tente novamente.", "erro");
+        return;
+    }
+
+    if (estadoLeitura === "tarefa" && tipoQR === "tarefa" && !dadosRegistro.tarefa) {
+        dadosRegistro.tarefa = idQR;
+        estadoLeitura = "trabalhador";
         exibirMensagemRegistro("📌 Tarefa lida com sucesso! Agora escaneie o cartão do trabalhador.", "info");
+        atualizarProgresso(33); // Avança a barra de progresso
 
-    } else if (estadoLeitura === "trabalhador" && !dadosRegistro.trabalhador) {
-        dadosRegistro.trabalhador = decodedText;
-        estadoLeitura = "palete"; // Atualiza o estado
+    } else if (estadoLeitura === "trabalhador" && (tipoQR === "trabalhador" || tipoQR === "chefe") && !dadosRegistro.trabalhador) {
+        dadosRegistro.trabalhador = idQR;
+        estadoLeitura = "palete";
         exibirMensagemRegistro("📌 Trabalhador lido com sucesso! Agora escaneie a palete.", "info");
+        atualizarProgresso(66); // Avança a barra de progresso
 
-    } else if (estadoLeitura === "palete" && !dadosRegistro.palete) {
-        dadosRegistro.palete = decodedText;
+    } else if (estadoLeitura === "palete" && tipoQR === "palete" && !dadosRegistro.palete) {
+        dadosRegistro.palete = idQR;
         exibirMensagemRegistro("✅ Palete lida com sucesso! Registrando trabalho...", "sucesso");
+        atualizarProgresso(100); // Completa a barra de progresso
 
-        // Enviar os dados para a API
-        registrarTrabalho();
+        // **Parar o scanner após a última leitura**
+        scanner.stop().then(() => {
+            scannerAtivo = false;
+            registrarTrabalho();
+        });
 
-        // Resetar os dados para um novo registro
-        setTimeout(() => {
-            dadosRegistro = { tarefa: null, trabalhador: null, palete: null };
-            estadoLeitura = "tarefa"; // Reinicia o estado
-            exibirMensagemRegistro("📷 Escaneie o QR Code da tarefa para iniciar um novo registro.", "info");
-        }, 3000);
     } else {
-        exibirMensagemRegistro("⚠️ QR Code já lido ou fora de sequência. Escaneie o próximo QR Code.", "erro");
+        exibirMensagemRegistro("⚠️ QR Code incorreto ou já lido. Escaneie o correto.", "erro");
     }
 }
 
-// Função para enviar os dados do registro para a API
-function registrarTrabalho() {
-    console.log("Dados preparados para envio:", JSON.stringify(dadosRegistro));
+// **Identificar o tipo de QR Code (Correção aplicada para paletes)**
+function identificarTipoQR(qrCodeText) {
+    console.log("Analisando QR Code:", qrCodeText);
 
+    // **Dividir a string pelos separadores ";"**
+    const partes = qrCodeText.split(";");
+
+    let idQR = "";
+    let tipoQR = "desconhecido";
+    let secao = null;
+
+    // **Mapear os dados extraídos**
+    partes.forEach(parte => {
+        const [chave, valor] = parte.split(":").map(str => str.trim());
+
+        if (chave === "ID") idQR = valor;
+        if (chave === "Tarefa") tipoQR = "tarefa";
+        if (chave === "Trabalhador" || chave === "Nome") tipoQR = "trabalhador";
+        if (chave === "Tipo" && valor === "Chefe") tipoQR = "chefe";
+        if (chave === "Secao") secao = valor;
+        if (chave === "Referencia" || chave === "Produto" || chave === "Lote") tipoQR = "palete"; // **Correção aplicada**
+    });
+
+    console.log("Resultado da análise:", { tipoQR, idQR, secao });
+    return { tipoQR, idQR, secao };
+}
+
+// **Enviar os dados do registro para a API**
+function registrarTrabalho() {
     fetch(`${API_URL}/registro_trabalho`, {
         method: "POST",
         headers: { "Content-Type": "application/json; charset=utf-8" },
@@ -757,29 +818,71 @@ function registrarTrabalho() {
     })
         .then(response => response.json())
         .then(data => {
-            console.log("Resposta da API:", data);
             exibirMensagemRegistro(`✅ ${data.message}`, "sucesso");
+
+            // **Resetar os dados para um novo registro**
+            setTimeout(() => {
+                dadosRegistro = { tarefa: null, trabalhador: null, palete: null };
+                estadoLeitura = "tarefa"; // Reinicia o estado
+                exibirMensagemRegistro("📷 Escaneie o QR Code da tarefa para iniciar um novo registro.", "info");
+                atualizarProgresso(0); // Reseta a barra de progresso
+            }, 3000);
         })
-        .catch(error => {
-            console.error("Erro ao registrar trabalho:", error);
+        .catch(() => {
             exibirMensagemRegistro("❌ Erro ao registrar trabalho. Tente novamente.", "erro");
         });
 }
 
-// Exibir mensagens de progresso no registro
+// **Exibir mensagens de progresso no registro**
 function exibirMensagemRegistro(mensagem, tipo = "info") {
-    console.log("Mensagem exibida:", mensagem); // Log da mensagem para depuração
+    let mensagemRegistro = document.getElementById("mensagem-registro");
 
-    const mensagemRegistro = document.getElementById("mensagem-registro");
     if (!mensagemRegistro) {
-        console.error("Elemento para mensagens de registro não encontrado.");
-        return;
+        mensagemRegistro = document.createElement("div");
+        mensagemRegistro.id = "mensagem-registro";
+        mensagemRegistro.style.position = "fixed";
+        mensagemRegistro.style.bottom = "20px";
+        mensagemRegistro.style.left = "50%";
+        mensagemRegistro.style.transform = "translateX(-50%)";
+        mensagemRegistro.style.backgroundColor = "white";
+        mensagemRegistro.style.padding = "10px";
+        mensagemRegistro.style.border = "1px solid black";
+        mensagemRegistro.style.borderRadius = "5px";
+        mensagemRegistro.style.fontWeight = "bold";
+        mensagemRegistro.style.zIndex = "1000";
+        document.body.appendChild(mensagemRegistro);
     }
 
     mensagemRegistro.textContent = mensagem;
     mensagemRegistro.style.display = "block";
     mensagemRegistro.style.color = tipo === "sucesso" ? "green" : tipo === "erro" ? "red" : "black";
+
+    setTimeout(() => {
+        mensagemRegistro.style.display = "none";
+    }, 3000);
 }
+
+// **Atualizar a barra de progresso**
+function atualizarProgresso(porcentagem) {
+    let progressBar = document.getElementById("qr-progress-bar");
+
+    if (!progressBar) {
+        progressBar = document.createElement("div");
+        progressBar.id = "qr-progress-bar";
+        progressBar.style.width = "0%";
+        progressBar.style.height = "20px";
+        progressBar.style.backgroundColor = "#4CAF50"; // Verde
+        progressBar.style.transition = "width 0.3s ease-in-out";
+        document.body.appendChild(progressBar);
+    }
+
+    progressBar.style.width = `${porcentagem}%`;
+}
+
+
+
+
+
 
 
 
@@ -804,7 +907,7 @@ function listarRegistro() {
 
                     Object.entries(paleteData.secoes).forEach(([secaoNome, secaoData]) => {
                         const secaoItem = document.createElement("li");
-                        secaoItem.innerHTML = `<h5>📍 Seção: ${secaoNome}</h5>`;
+                        secaoItem.innerHTML = `<h5>📍 Secção: ${secaoNome}</h5>`;
                         paleteItem.appendChild(secaoItem);
 
                         Object.entries(secaoData.tarefas).forEach(([tarefaId, tarefaInfo]) => {

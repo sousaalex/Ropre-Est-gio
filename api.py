@@ -7,6 +7,7 @@ from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import cm
 from reportlab.lib.utils import ImageReader
+from reportlab.lib import colors
 import re  # Importar o módulo de expressões regulares
 import os
 import json
@@ -112,32 +113,47 @@ def add_trabalhador():
         if not nome:
             return jsonify({'message': 'Nome do trabalhador é obrigatório'}), 400
 
-        # Gerar QR Code em Base64
-        conteudo_qr = f"ID: {nome}\nChefe: {is_chefe}"
-        qr_code_base64 = gerar_qr_code_base64(conteudo_qr)
+        # Criar trabalhador no Firestore para obter o ID
+        trabalhador_ref = db.collection('trabalhadores').add({'nome': nome, 'chefe': is_chefe})
+        trabalhador_id = trabalhador_ref[1].id  # Obtém o ID gerado automaticamente
 
-        # Adicionar trabalhador ao Firestore
-        trabalhador_ref = db.collection('trabalhadores').add({
+        # **Gerar QR Code para Trabalhador**
+        qr_code_trabalhador_data = f"ID:{trabalhador_id};Nome:{nome};Tipo:Trabalhador"
+        qr_code_trabalhador = gerar_qr_code_base64(qr_code_trabalhador_data)
+
+        # **Gerar QR Code para Chefe (se aplicável)**
+        qr_code_chefe = None  # Inicializa como None
+        if is_chefe:
+            qr_code_chefe_data = f"ID:{trabalhador_id};Nome:{nome};Tipo:Chefe"
+            qr_code_chefe = gerar_qr_code_base64(qr_code_chefe_data)
+
+        # Atualizar Firestore com os QR Codes corretos
+        trabalhador_data = {
             'nome': nome,
             'chefe': is_chefe,
-            'qr_code': qr_code_base64
-        })
-
-        trabalhador_id = trabalhador_ref[1].id
+            'qr_code_trabalhador': qr_code_trabalhador,
+            'qr_code_chefe': qr_code_chefe  # Pode ser None se não for chefe
+        }
+        db.collection('trabalhadores').document(trabalhador_id).set(trabalhador_data)
 
         return jsonify({
             'message': 'Trabalhador adicionado com sucesso!',
             'id': trabalhador_id,
-            'qr_code': qr_code_base64
+            'qr_code_trabalhador': qr_code_trabalhador,
+            'qr_code_chefe': qr_code_chefe
         }), 201
+
     except Exception as e:
         print(f"Erro ao adicionar trabalhador: {e}")
         return jsonify({'message': 'Erro ao adicionar trabalhador.', 'details': str(e)}), 500
 
 
 
-@app.route('/cartao/<string:trabalhador_id>', methods=['GET'])
-def gerar_cartao_pdf(trabalhador_id):
+
+
+
+@app.route('/cartao/<string:trabalhador_id>/<string:tipo_cartao>', methods=['GET'])
+def gerar_cartao_pdf(trabalhador_id, tipo_cartao):
     try:
         # Buscar informações do trabalhador no Firestore
         trabalhador_ref = db.collection('trabalhadores').document(trabalhador_id).get()
@@ -146,52 +162,55 @@ def gerar_cartao_pdf(trabalhador_id):
 
         trabalhador = trabalhador_ref.to_dict()
 
-        # Gerar QR Code a partir do Base64
-        qr_code_base64 = trabalhador['qr_code']
+        # Escolher o QR Code com base no tipo de cartão
+        if tipo_cartao == "chefe" and trabalhador.get("chefe"):
+            qr_code_base64 = trabalhador.get('qr_code_chefe')
+            cor_cartao = colors.red  # Cartão vermelho para chefes
+            titulo_cartao = "Cartão de Chefe"
+        else:
+            qr_code_base64 = trabalhador.get('qr_code_trabalhador')
+            cor_cartao = colors.blue  # Cartão azul para trabalhadores
+            titulo_cartao = "Cartão de Trabalhador"
+
+        if not qr_code_base64:
+            return jsonify({'message': 'QR Code não encontrado para este tipo de cartão.'}), 404
+
+        # Converter QR Code Base64 em imagem
         qr_code_data = base64.b64decode(qr_code_base64)
         qr_code_img = Image.open(BytesIO(qr_code_data))
 
-        # Caminho temporário para salvar o PDF
+        # Criar o PDF
         temp_dir = tempfile.gettempdir()
-        pdf_path = f"{temp_dir}/cartao_{trabalhador_id}.pdf"
-
-        # Criar o PDF com tamanho personalizado (8.5 cm x 5.5 cm)
+        pdf_path = f"{temp_dir}/cartao_{trabalhador_id}_{tipo_cartao}.pdf"
         largura, altura = 7 * cm, 10 * cm
         pdf = canvas.Canvas(pdf_path, pagesize=(largura, altura))
 
-        # Adicionar QR Code ao cartão
-        qr_code_img = qr_code_img.resize((100, 100))  # Redimensionar o QR Code
+        # Adicionar cor de fundo
+        pdf.setFillColor(cor_cartao)
+        pdf.rect(0, 0, largura, altura, fill=True, stroke=False)
+
+        # Adicionar QR Code
+        qr_code_img = qr_code_img.resize((100, 100))
         qr_code_buffer = BytesIO()
         qr_code_img.save(qr_code_buffer, format="PNG")
         pdf.drawImage(ImageReader(qr_code_buffer), (largura - 100) / 2, altura - 120, width=100, height=100)
 
-        # Adicionar informações do trabalhador logo abaixo do QR Code
-        pdf.setFont("Helvetica", 12)  # Usar a fonte Helvetica (similar à Arial)
+        # Adicionar texto
+        pdf.setFillColor(colors.white)  # Texto branco para visibilidade
+        pdf.setFont("Helvetica-Bold", 12)
+        pdf.drawString(20, altura - 150, f"Nome: {trabalhador['nome']}")
+        pdf.drawString(20, altura - 170, f"ID: {trabalhador_id}")
+        pdf.drawString(20, altura - 190, titulo_cartao)
 
-        # Definir a posição inicial para o texto (abaixo do QR Code)
-        y_info_start = altura - 140  # Começar logo abaixo do QR Code
-        line_spacing = 15  # Espaçamento entre as linhas de texto
-
-        # Textos com informações do trabalhador
-        nome_texto = f"Nome: {trabalhador['nome']}"
-        chefe_texto = f"Chefe: {'Sim' if trabalhador.get('chefe', False) else 'Não'}"
-
-        # Calcular larguras para centralização
-        nome_width = pdf.stringWidth(nome_texto, "Helvetica", 12)
-        chefe_width = pdf.stringWidth(chefe_texto, "Helvetica", 12)
-
-        # Desenhar textos centralizados
-        pdf.drawString((largura - nome_width) / 2, y_info_start, nome_texto)
-        pdf.drawString((largura - chefe_width) / 2, y_info_start - 2 * line_spacing, chefe_texto)
-
-        # Finalizar o PDF
+        # Finalizar PDF
         pdf.save()
 
-        # Retornar o PDF como arquivo para download
-        return send_from_directory(temp_dir, f"cartao_{trabalhador_id}.pdf", as_attachment=True)
+        return send_from_directory(temp_dir, f"cartao_{trabalhador_id}_{tipo_cartao}.pdf", as_attachment=True)
+
     except Exception as e:
         print(f"Erro ao gerar cartão: {e}")
         return jsonify({'message': 'Erro ao gerar cartão.', 'details': str(e)}), 500
+
 
 
 
@@ -235,37 +254,39 @@ def add_palete():
     try:
         data = request.get_json()
 
-        # Validação dos campos obrigatórios
-        required_fields = ['data_entrega', 'op', 'referencia', 'nome_produto',
-                           'medida', 'cor_botao', 'cor_ribete',
-                           'leva_embalagem', 'quantidade', 'data_hora', 'numero_lote']
+        # Validar campos obrigatórios
+        required_fields = ['data_entrega', 'op', 'referencia', 'nome_produto', 'medida',
+                           'cor_botao', 'cor_ribete', 'leva_embalagem', 'quantidade',
+                           'data_hora', 'numero_lote']
         missing_fields = [field for field in required_fields if field not in data or data[field] is None]
         if missing_fields:
             return jsonify({'message': f'Campos obrigatórios ausentes: {", ".join(missing_fields)}'}), 400
 
-        # Gerar QR Code em Base64
-        conteudo_qr = (
-            f"Data de Entrega: {data['data_entrega']}\n"
-            f"OP: {data['op']}\n"
-            f"Referência: {data['referencia']}\n"
-            f"Nome do Produto: {data['nome_produto']}\n"
-        )
+        # Criar o documento da palete primeiro para obter o ID
+        palete_ref = db.collection('paletes').add(data)
+        palete_id = palete_ref[1].id  # Obtém o ID gerado automaticamente
+
+        conteudo_qr = f"ID:{palete_id};Referencia:{data['referencia']};Nome:{data['nome_produto']};NumeroLote:{data['numero_lote']}"
         qr_code_base64 = gerar_qr_code_base64(conteudo_qr)
 
-        # Adicionar a palete ao Firestore
-        palete_data = {**data, 'qr_code': qr_code_base64}
-        db.collection('paletes').add(palete_data)
+        # Atualizar Firestore com o QR Code correto
+        db.collection('paletes').document(palete_id).set({
+            **data,'qr_code': qr_code_base64
+        })
 
         return jsonify({
             'message': 'Palete adicionada com sucesso!',
+            'palete_id': palete_id,
             'qr_code': qr_code_base64
         }), 201
+
     except Exception as e:
         print(f"Erro ao adicionar palete: {e}")
         return jsonify({'message': 'Erro ao adicionar palete.', 'details': str(e)}), 500
 
 
-# Rota para gerar o PDF da palete
+
+
 # Rota para gerar o PDF da palete
 @app.route('/paletes/<string:palete_id>/pdf', methods=['GET'])
 def gerar_pdf_palete(palete_id):
@@ -402,26 +423,31 @@ def add_tarefa():
         if not nome_tarefa or not secao:
             return jsonify({'message': 'Nome da tarefa e secção são obrigatórios.'}), 400
 
-        # Gerar QR Code para a tarefa
-        qr_code_data = f"Tarefa: {nome_tarefa}\nSecção: {secao}"
+        # Criar a tarefa no Firestore primeiro para obter o ID
+        tarefa_ref = db.collection('tarefas').add({'nome': nome_tarefa, 'secao': secao})
+        tarefa_id = tarefa_ref[1].id  # Obter o ID gerado automaticamente
+
+        # Gerar QR Code que inclui o ID da tarefa
+        qr_code_data = f"ID:{tarefa_id};Tarefa:{nome_tarefa};Secao:{secao}"
         qr_code_base64 = gerar_qr_code_base64(qr_code_data)
 
-        # Salvar a tarefa no Firestore
-        tarefa_data = {
-            'nome': nome_tarefa, 
-           'secao':secao,
-           'qr_code': qr_code_base64
-        }
-        tarefa_ref = db.collection('tarefas').add(tarefa_data)
+        # Atualizar a tarefa no Firestore com o QR Code correto
+        db.collection('tarefas').document(tarefa_id).set({
+            'nome': nome_tarefa,
+            'secao': secao,
+            'qr_code': qr_code_base64
+        })
 
         return jsonify({
             'message': 'Tarefa adicionada com sucesso!',
-            'tarefa_id': tarefa_ref[1].id,
+            'tarefa_id': tarefa_id,
             'qr_code': qr_code_base64
         }), 201
+
     except Exception as e:
         print(f"Erro ao adicionar tarefa: {e}")
         return jsonify({'message': 'Erro ao adicionar tarefa.', 'details': str(e)}), 500
+
 
 
 # Rota para gerar o PDF da tarefa
