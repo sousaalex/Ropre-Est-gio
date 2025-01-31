@@ -748,7 +748,7 @@ function startQRCodeScanner(readerId) {
 
     html5QrCode
         .start(
-            { facingMode: "environment" },
+            { facingMode: "user" },
             config,
             (decodedText) => processQRCode(decodedText),
             (errorMessage) => {
