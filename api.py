@@ -117,14 +117,14 @@ def add_trabalhador():
         trabalhador_ref = db.collection('trabalhadores').add({'nome': nome, 'chefe': is_chefe})
         trabalhador_id = trabalhador_ref[1].id  # Obtém o ID gerado automaticamente
 
-        # **Gerar QR Code para Trabalhador**
-        qr_code_trabalhador_data = f"ID:{trabalhador_id};Nome:{nome};Tipo:Trabalhador"
+       # **Gerar QR Code para Trabalhador**
+        qr_code_trabalhador_data = f"ID:{trabalhador_id};Tipo:Trabalhador;Nome:{nome}"
         qr_code_trabalhador = gerar_qr_code_base64(qr_code_trabalhador_data)
 
         # **Gerar QR Code para Chefe (se aplicável)**
-        qr_code_chefe = None  # Inicializa como None
+        qr_code_chefe = None
         if is_chefe:
-            qr_code_chefe_data = f"ID:{trabalhador_id};Nome:{nome};Tipo:Chefe"
+            qr_code_chefe_data = f"ID:{trabalhador_id};Tipo:Chefe;Nome:{nome}"
             qr_code_chefe = gerar_qr_code_base64(qr_code_chefe_data)
 
         # Atualizar Firestore com os QR Codes corretos
@@ -169,7 +169,7 @@ def gerar_cartao_pdf(trabalhador_id, tipo_cartao):
             titulo_cartao = "Cartão de Chefe"
         else:
             qr_code_base64 = trabalhador.get('qr_code_trabalhador')
-            cor_cartao = colors.whitesmoke  # Cartão branco para trabalhadores
+            cor_cartao = colors.blue  # Cartão azul para trabalhadores
             titulo_cartao = "Cartão de Trabalhador"
 
         if not qr_code_base64:
@@ -266,12 +266,18 @@ def add_palete():
         palete_ref = db.collection('paletes').add(data)
         palete_id = palete_ref[1].id  # Obtém o ID gerado automaticamente
 
-        conteudo_qr = f"ID:{palete_id};Referencia:{data['referencia']};Nome:{data['nome_produto']};NumeroLote:{data['numero_lote']}"
+        # **Correção aplicada: Gerar QR Code com todas as informações necessárias**
+        conteudo_qr = (
+            f"ID:{palete_id};"
+            f"Referencia:{data['referencia']};"
+            f"Nome:{data['nome_produto']};"
+            f"NumeroLote:{data['numero_lote']}"
+        )
         qr_code_base64 = gerar_qr_code_base64(conteudo_qr)
 
         # Atualizar Firestore com o QR Code correto
         db.collection('paletes').document(palete_id).set({
-            **data,'qr_code': qr_code_base64
+            **data, 'qr_code': qr_code_base64
         })
 
         return jsonify({
@@ -283,6 +289,7 @@ def add_palete():
     except Exception as e:
         print(f"Erro ao adicionar palete: {e}")
         return jsonify({'message': 'Erro ao adicionar palete.', 'details': str(e)}), 500
+
 
 
 
@@ -538,69 +545,54 @@ def delete_tarefa(tarefa_id):
 def get_registro_trabalho():
     try:
         registros_ref = db.collection('registros_trabalho').stream()
-        registros = {}
+        registros = []
 
         for dia_doc in registros_ref:
-            dia_data = dia_doc.to_dict().get('data', 'Desconhecido')
             dia_id = dia_doc.id
+            dia_data = dia_doc.to_dict().get('data', 'Desconhecido')
+            print(f"📅 Buscando registros para o dia: {dia_id}")
 
-            # Inicializar a estrutura para o dia
-            if dia_data not in registros:
-                registros[dia_data] = {
-                    "data": dia_data,
-                    "paletes_trabalhadas": {}
-                }
+            registro_dia = {
+                "data": dia_data,
+                "paletes_trabalhadas": {}
+            }
 
-            # Obter as paletes trabalhadas no dia
             paletes_ref = db.collection('registros_trabalho').document(dia_id).collection('paletes_trabalhadas').stream()
-
             for palete_doc in paletes_ref:
                 palete_id = palete_doc.id
-                palete_data = palete_doc.to_dict()
+                print(f"📦 Palete encontrada: {palete_id}")
 
-                # Inicializar a estrutura para a palete
-                if palete_id not in registros[dia_data]["paletes_trabalhadas"]:
-                    registros[dia_data]["paletes_trabalhadas"][palete_id] = {
-                        "secoes": {}  # Adicionando a estrutura de secões
-                    }
+                registro_dia["paletes_trabalhadas"][palete_id] = {"secoes": {}}
 
-                # Obter as seções dentro da palete
                 secoes_ref = db.collection('registros_trabalho').document(dia_id).collection('paletes_trabalhadas').document(palete_id).collection('secoes').stream()
-
                 for secao_doc in secoes_ref:
-                    secao_nome = secao_doc.id
-                    secao_data = secao_doc.to_dict()
+                    secao_id = secao_doc.id
+                    print(f"📍 Seção encontrada: {secao_id}")
 
-                    # Inicializar a estrutura para a seção
-                    if secao_nome not in registros[dia_data]["paletes_trabalhadas"][palete_id]["secoes"]:
-                        registros[dia_data]["paletes_trabalhadas"][palete_id]["secoes"][secao_nome] = {
-                            "tarefas": {}
-                        }
+                    registro_dia["paletes_trabalhadas"][palete_id]["secoes"][secao_id] = {"tarefas": {}}
 
-                    # Obter as tarefas dentro da seção
-                    tarefas_ref = db.collection('registros_trabalho').document(dia_id).collection('paletes_trabalhadas').document(palete_id).collection('secoes').document(secao_nome).collection('tarefas').stream()
-
+                    tarefas_ref = db.collection('registros_trabalho').document(dia_id).collection('paletes_trabalhadas').document(palete_id).collection('secoes').document(secao_id).collection('tarefas').stream()
                     for tarefa_doc in tarefas_ref:
                         tarefa_id = tarefa_doc.id
                         tarefa_data = tarefa_doc.to_dict()
+                        print(f"⚙️ Tarefa encontrada: {tarefa_id}")
 
-                        # Adicionar a tarefa à seção
-                        registros[dia_data]["paletes_trabalhadas"][palete_id]["secoes"][secao_nome]["tarefas"][tarefa_id] = {
+                        registro_dia["paletes_trabalhadas"][palete_id]["secoes"][secao_id]["tarefas"][tarefa_id] = {
                             "nome": tarefa_data.get('nome', 'Nome Desconhecido'),
                             "trabalhador_id": tarefa_data.get('trabalhador_id', 'ID Desconhecido'),
                             "hora_inicio": tarefa_data.get('hora_inicio', 'Não informado'),
                             "hora_fim": tarefa_data.get('hora_fim', 'Em andamento')
                         }
 
-        # Retornar os registros como uma lista
-        registros_list = list(registros.values())
-        return jsonify(registros_list), 200
+            registros.append(registro_dia)
+
+        return jsonify(registros), 200
 
     except Exception as e:
-        print(f"Erro ao listar registros de trabalho: {e}")
+        print(f"❌ Erro ao listar registros de trabalho: {e}")
         return jsonify({'message': 'Erro ao listar registros de trabalho.', 'details': str(e)}), 500
 
-        return jsonify({'message': 'Erro ao listar registros de trabalho.', 'details': str(e)}), 500
+
 
 
 
@@ -608,13 +600,19 @@ def get_registro_trabalho():
 def formatar_horario():
     return datetime.now().strftime('%Y-%m-%d %H:%M:%S')
 
-# Rota para registrar trabalho com tarefa, trabalhador e palete
+def extrair_valor(qr_text, chave):
+    """ Função para extrair um valor específico de um QR Code """
+    for item in qr_text.split(';'):
+        if chave in item:
+            return item.replace(chave, '').strip()
+    return None  # Retorna None se não encontrar
+
 @app.route('/registro_trabalho', methods=['POST'])
 def registrar_trabalho():
     try:
         data = request.get_json()
 
-        # Leitura dos QR Codes
+        # Verificar se todos os QR Codes estão presentes
         tarefa_qr = data.get('tarefa_qr')
         trabalhador_qr = data.get('trabalhador_qr')
         palete_qr = data.get('palete_qr')
@@ -622,74 +620,59 @@ def registrar_trabalho():
         if not tarefa_qr or not trabalhador_qr or not palete_qr:
             return jsonify({'message': 'QR Codes de tarefa, trabalhador e palete são obrigatórios.'}), 400
 
-        # Extrair IDs dos QR Codes
-        tarefa_id = tarefa_qr.split(';')[0].replace('ID:', '').strip()
-        trabalhador_id = trabalhador_qr.split(';')[0].replace('ID:', '').strip()
-        palete_id = palete_qr.split(';')[0].replace('ID:', '').strip()
-        secao = palete_qr.split(';')[1].replace('Secao:', '').strip()  # Capturar a seção corretamente
+        # Extrair informações dos QR Codes
+        tarefa_id = extrair_valor(tarefa_qr, "ID:")
+        trabalhador_id = extrair_valor(trabalhador_qr, "ID:")
+        palete_id = extrair_valor(palete_qr, "ID:")
+        secao = extrair_valor(tarefa_qr, "Secao:") or "Default"
 
-        # Validar tarefa no Firestore
-        tarefa_ref = db.collection('tarefas').document(tarefa_id).get()
-        if not tarefa_ref.exists:
+        print(f"✅ Seção extraída: {secao}")
+
+        # Verificar se a tarefa existe
+        tarefa_ref = db.collection('tarefas').document(tarefa_id)
+        if not tarefa_ref.get().exists:
             return jsonify({'message': f'Tarefa com ID {tarefa_id} não encontrada.'}), 404
-        tarefa = tarefa_ref.to_dict()
-        
-        # Validar trabalhador no Firestore
-        trabalhador_ref = db.collection('trabalhadores').document(trabalhador_id).get()
-        if not trabalhador_ref.exists:
+        tarefa_data = tarefa_ref.get().to_dict()
+
+        # Verificar se o trabalhador existe
+        trabalhador_ref = db.collection('trabalhadores').document(trabalhador_id)
+        if not trabalhador_ref.get().exists:
             return jsonify({'message': f'Trabalhador com ID {trabalhador_id} não encontrado.'}), 404
 
-        # Data do registro
+        # Criar registro do dia
         data_atual = datetime.now(timezone.utc).strftime('%Y-%m-%d')
-
-        # Referência do dia no Firestore
         dia_ref = db.collection('registros_trabalho').document(data_atual)
 
-        # Verificar se o documento do dia existe, senão criar
-        dia_doc = dia_ref.get()
-        if not dia_doc.exists:
+        if not dia_ref.get().exists:
             dia_ref.set({'data': data_atual})
+        print(f"📅 Registro do dia criado/atualizado: {data_atual}")
 
-        # Referência da palete dentro do dia
+        # Criar registro da palete
         palete_ref = dia_ref.collection('paletes_trabalhadas').document(palete_id)
+        if not palete_ref.get().exists:
+            palete_ref.set({})
+        print(f"📦 Registro da palete criado/atualizado: {palete_id}")
 
-        # Verificar se o documento da palete existe, senão criar
-        palete_doc = palete_ref.get()
-        if not palete_doc.exists:
-            palete_ref.set({'secao': secao})  # Agora a seção é um campo dentro da palete
-
-        # **CORREÇÃO IMPORTANTE**
-        # Garantir que cada secção tenha suas próprias tarefas dentro da palete
+        # Criar registro da seção
         secao_ref = palete_ref.collection('secoes').document(secao)
-
-        # Verificar se a seção existe dentro da palete
-        secao_doc = secao_ref.get()
-        if not secao_doc.exists:
+        if not secao_ref.get().exists:
             secao_ref.set({'nome': secao})
+        print(f"📍 Registro da seção criado/atualizado: {secao}")
 
-        # Referência da tarefa dentro da seção da palete
+        # Registrar a tarefa
         tarefa_ref = secao_ref.collection('tarefas').document(tarefa_id)
-
-        # Verificar se a tarefa já foi iniciada (para marcar o fim)
-        tarefa_doc = tarefa_ref.get()
-        if tarefa_doc.exists:
+        if tarefa_ref.get().exists:
             tarefa_ref.update({'hora_fim': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S')})
-            return jsonify({
-                'message': 'Tarefa finalizada com sucesso!',
-                'tarefa_id': tarefa_id,
-                'trabalhador_id': trabalhador_id,
-                'palete_id': palete_id,
-                'secao': secao
-            }), 200
+            print(f"✅ Tarefa finalizada: {tarefa_id}")
+            return jsonify({'message': 'Tarefa finalizada com sucesso!'}), 200
 
-        # Se a tarefa ainda não existe, registrar o início
-        registro_tarefa = {
-            'nome': tarefa['nome'],
+        tarefa_ref.set({
+            'nome': tarefa_data['nome'],
             'trabalhador_id': trabalhador_id,
             'hora_inicio': datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S'),
-            'hora_fim': None  # Hora de fim será atualizada posteriormente
-        }
-        tarefa_ref.set(registro_tarefa)
+            'hora_fim': None
+        })
+        print(f"✅ Nova tarefa registrada: {tarefa_id}")
 
         return jsonify({
             'message': 'Registro de trabalho adicionado com sucesso!',
@@ -700,7 +683,7 @@ def registrar_trabalho():
         }), 201
 
     except Exception as e:
-        print(f"Erro ao registrar trabalho: {e}")
+        print(f"❌ Erro ao registrar trabalho: {e}")
         return jsonify({'message': 'Erro ao registrar trabalho.', 'details': str(e)}), 500
 
 

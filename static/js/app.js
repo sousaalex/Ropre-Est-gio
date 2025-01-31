@@ -2,12 +2,15 @@ console.log("Hostname atual:", window.location.hostname);
 
 const API_URL = window.location.hostname.includes("localhost") || 
                 window.location.hostname.includes("127.0.0.1") ||
-                window.location.hostname.includes("10.0.1.242")
-  ? "http://10.0.1.242:5000" // URL do backend local
+                window.location.hostname.includes("192.168.1.76")
+  ? "http://192.168.1.76:5000" // URL do backend local
   : `https://${window.location.hostname}/`; // URL do Vercel (produção ou preview)
 
 console.log("Verificando se o JavaScript está sendo carregado corretamente...");
 console.log(`API_URL configurada: ${API_URL}`);
+
+let secaoGlobal = null;  // Armazena a seção corretamente
+
 
 // Aguarda o carregamento completo do DOM
 document.addEventListener("DOMContentLoaded", () => {
@@ -696,6 +699,7 @@ function listarPaletes() {
 
 
 
+// **Estado inicial dos dados**
 let dadosRegistro = {
     tarefa: null,
     trabalhador: null,
@@ -704,6 +708,26 @@ let dadosRegistro = {
 
 let estadoLeitura = "tarefa"; // Define o estado inicial como "tarefa"
 let scannerAtivo = false; // Evita múltiplas inicializações
+let html5QrCode; // Variável global para o scanner
+
+// **Função para resetar o scanner e o estado**
+function resetarEstadoScanner() {
+    dadosRegistro = {
+        tarefa: null,
+        trabalhador: null,
+        palete: null
+    };
+    estadoLeitura = "tarefa"; // Reinicia o estado para "tarefa"
+    scannerAtivo = false; // Permite reiniciar o scanner
+    atualizarProgresso(0); // Reseta a barra de progresso
+    exibirMensagemRegistro("📷 Escaneie o QR Code da Tarefa para começar.", "info");
+
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            console.log("🔄 Scanner reiniciado.");
+        }).catch(err => console.error("❌ Erro ao parar o scanner:", err));
+    }
+}
 
 // **Inicializa o scanner de QR Code**
 function startQRCodeScanner(readerId) {
@@ -719,31 +743,30 @@ function startQRCodeScanner(readerId) {
     exibirMensagemRegistro("📷 Escaneie o QR Code da Tarefa para começar.", "info");
     atualizarProgresso(0); // Reinicia a barra de progresso
 
-    const html5QrCode = new Html5Qrcode(readerId);
+    html5QrCode = new Html5Qrcode(readerId);
     const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
     html5QrCode
         .start(
             { facingMode: "environment" },
             config,
-            (decodedText) => processQRCode(decodedText, html5QrCode),
+            (decodedText) => processQRCode(decodedText),
             (errorMessage) => {
                 if (!errorMessage.includes("No MultiFormat Readers were able to detect the code.")) {
                     console.warn("Erro ao ler QR Code:", errorMessage);
                 }
             }
         )
-        .catch((err) => console.error("Erro ao iniciar o scanner:", err));
+        .catch(err => console.error("Erro ao iniciar o scanner:", err));
 }
 
 // **Processar a leitura dos QR Codes**
-function processQRCode(decodedText, scanner) {
-    console.log("QR Code lido:", decodedText);
+function processQRCode(decodedText) {
+    console.log("📸 QR Code lido:", decodedText);
 
-    // **Analisar o QR Code**
     const { tipoQR, idQR, secao } = identificarTipoQR(decodedText);
 
-    console.log("Tipo identificado:", tipoQR, "ID:", idQR, "Seção:", secao);
+    console.log("🛠 Tipo identificado:", tipoQR, "ID:", idQR, "Seção:", secao);
 
     if (tipoQR === "desconhecido") {
         exibirMensagemRegistro("⚠️ QR Code não reconhecido. Tente novamente.", "erro");
@@ -752,86 +775,102 @@ function processQRCode(decodedText, scanner) {
 
     if (estadoLeitura === "tarefa" && tipoQR === "tarefa" && !dadosRegistro.tarefa) {
         dadosRegistro.tarefa = idQR;
+        if (secao) {
+            dadosRegistro.secao = secao;
+            console.log("✅ Seção armazenada:", dadosRegistro.secao);
+        }
         estadoLeitura = "trabalhador";
         exibirMensagemRegistro("📌 Tarefa lida com sucesso! Agora escaneie o cartão do trabalhador.", "info");
-        atualizarProgresso(33); // Avança a barra de progresso
+        atualizarProgresso(33);
 
     } else if (estadoLeitura === "trabalhador" && (tipoQR === "trabalhador" || tipoQR === "chefe") && !dadosRegistro.trabalhador) {
         dadosRegistro.trabalhador = idQR;
         estadoLeitura = "palete";
         exibirMensagemRegistro("📌 Trabalhador lido com sucesso! Agora escaneie a palete.", "info");
-        atualizarProgresso(66); // Avança a barra de progresso
+        atualizarProgresso(66);
 
     } else if (estadoLeitura === "palete" && tipoQR === "palete" && !dadosRegistro.palete) {
         dadosRegistro.palete = idQR;
         exibirMensagemRegistro("✅ Palete lida com sucesso! Registrando trabalho...", "sucesso");
-        atualizarProgresso(100); // Completa a barra de progresso
+        atualizarProgresso(100);
 
-        // **Parar o scanner após a última leitura**
-        scanner.stop().then(() => {
-            scannerAtivo = false;
-            registrarTrabalho();
-        });
+        registrarTrabalho(); // Envia os dados para a API
+        resetarEstadoScanner(); // Reseta o estado após registro
 
     } else {
         exibirMensagemRegistro("⚠️ QR Code incorreto ou já lido. Escaneie o correto.", "erro");
     }
 }
 
-// **Identificar o tipo de QR Code (Correção aplicada para paletes)**
+
+
+
+
+// **Identificar o tipo de QR Code**
 function identificarTipoQR(qrCodeText) {
-    console.log("Analisando QR Code:", qrCodeText);
+    console.log("🔍 Analisando QR Code:", qrCodeText);
 
-    // **Dividir a string pelos separadores ";"**
     const partes = qrCodeText.split(";");
-
     let idQR = "";
     let tipoQR = "desconhecido";
     let secao = null;
 
-    // **Mapear os dados extraídos**
     partes.forEach(parte => {
         const [chave, valor] = parte.split(":").map(str => str.trim());
 
         if (chave === "ID") idQR = valor;
         if (chave === "Tarefa") tipoQR = "tarefa";
-        if (chave === "Trabalhador" || chave === "Nome") tipoQR = "trabalhador";
-        if (chave === "Tipo" && valor === "Chefe") tipoQR = "chefe";
-        if (chave === "Secao") secao = valor;
-        if (chave === "Referencia" || chave === "Produto" || chave === "Lote") tipoQR = "palete"; // **Correção aplicada**
+        if (chave === "Tipo") {
+            if (valor === "Trabalhador") tipoQR = "trabalhador";
+            if (valor === "Chefe") tipoQR = "chefe";
+        }
+        if (chave === "Secao" && tipoQR === "tarefa") {
+            secaoGlobal = valor;  // Apenas define se for uma tarefa
+            console.log("🔵 Secção atualizada globalmente:", secaoGlobal);
+        }
+        if (chave === "Referencia" || chave === "NumeroLote") tipoQR = "palete";
     });
 
-    console.log("Resultado da análise:", { tipoQR, idQR, secao });
+    // Usa a seção global caso seja null (garante que mantenha o valor certo)
+    secao = secaoGlobal;
+
+    console.log("✅ Resultado da análise:", { tipoQR, idQR, secao });
     return { tipoQR, idQR, secao };
 }
 
+
+
+
 // **Enviar os dados do registro para a API**
 function registrarTrabalho() {
-    fetch(`${API_URL}/registro_trabalho`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json; charset=utf-8" },
-        body: JSON.stringify({
-            tarefa_qr: dadosRegistro.tarefa,
-            trabalhador_qr: dadosRegistro.trabalhador,
-            palete_qr: dadosRegistro.palete
-        })
-    })
-        .then(response => response.json())
-        .then(data => {
-            exibirMensagemRegistro(`✅ ${data.message}`, "sucesso");
+    console.log("📡 Enviando registro de trabalho...");
 
-            // **Resetar os dados para um novo registro**
-            setTimeout(() => {
-                dadosRegistro = { tarefa: null, trabalhador: null, palete: null };
-                estadoLeitura = "tarefa"; // Reinicia o estado
-                exibirMensagemRegistro("📷 Escaneie o QR Code da tarefa para iniciar um novo registro.", "info");
-                atualizarProgresso(0); // Reseta a barra de progresso
-            }, 3000);
-        })
-        .catch(() => {
-            exibirMensagemRegistro("❌ Erro ao registrar trabalho. Tente novamente.", "erro");
-        });
+    const payload = {
+        tarefa_qr: `ID:${dadosRegistro.tarefa};Secao:${dadosRegistro.secao}`,
+        trabalhador_qr: `ID:${dadosRegistro.trabalhador}`,
+        palete_qr: `ID:${dadosRegistro.palete}`
+    };
+
+    console.log("📤 Payload enviado para API:", payload);
+
+    fetch(`${API_URL}/registro_trabalho`, { // ✅ Usa a variável API_URL corretamente
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log("✅ Resposta da API:", data);
+        exibirMensagemRegistro("✅ Trabalho registrado com sucesso!", "sucesso");
+    })
+    .catch(error => {
+        console.error("❌ Erro ao registrar trabalho:", error);
+        exibirMensagemRegistro("❌ Erro ao registrar trabalho.", "erro");
+    });
 }
+
 
 // **Exibir mensagens de progresso no registro**
 function exibirMensagemRegistro(mensagem, tipo = "info") {
