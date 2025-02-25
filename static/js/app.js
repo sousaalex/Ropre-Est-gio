@@ -2,8 +2,8 @@ console.log("Hostname atual:", window.location.hostname);
 
 const API_URL = window.location.hostname.includes("localhost") || 
                 window.location.hostname.includes("127.0.0.1") ||
-                window.location.hostname.includes("192.168.1.76")
-  ? "http://192.168.1.76:5000" // URL do backend local
+                window.location.hostname.includes("192.168.30.20")
+  ? "http://192.168.30.20:5000" // URL do backend local
   : `https://${window.location.hostname}/`; // URL do Vercel (produção ou preview)
 
 console.log("Verificando se o JavaScript está sendo carregado corretamente...");
@@ -14,13 +14,21 @@ let secaoGlobal = null;  // Armazena a seção corretamente
 
 // Aguarda o carregamento completo do DOM
 document.addEventListener("DOMContentLoaded", () => {
-
     console.log("✅ DOM totalmente carregado! Isso significa que os eventos devem estar funcionais.");
 
     // Solicitar o tipo de usuário e configurar o layout
     const tipoUsuario = prompt("Digite o tipo de usuário (admin, chefe, funcionario):").toLowerCase();
     definirLayout(tipoUsuario);
     configurarScanner(tipoUsuario);
+
+    // Se o tipo de usuário for admin, mostrar o modal de login
+    if (tipoUsuario === "admin") {
+        const modal = new bootstrap.Modal(document.getElementById("authModal"), {
+            backdrop: 'static', // Impede o fechamento ao clicar fora
+            keyboard: false // Impede o fechamento ao pressionar Esc
+        });
+        modal.show();
+    }
 
     // Adicionar evento ao formulário para adicionar trabalhador
     const formAdicionarTrabalhador = document.getElementById("form-adicionar-trabalhador");
@@ -38,10 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("Formulário 'formAdicionarTarefa' não encontrado.");
     }
 
-
-    
-
-
     // Lista trabalhadores e paletes ao carregar
     listarTrabalhadores();
 
@@ -51,8 +55,6 @@ document.addEventListener("DOMContentLoaded", () => {
         tab.addEventListener("shown.bs.tab", function (event) {
             const targetId = event.target.getAttribute("href");
             console.log(`Aba ativada: ${targetId}`);  // Log para verificar qual aba está sendo ativada
-
-
 
             // Identifica qual aba foi ativada e chama a função correspondente
             if (targetId === "#tab-trabalhadores") {
@@ -85,6 +87,99 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Atualiza o campo "Data e Hora" a cada segundo
         setInterval(atualizarDataHora, 1000);
+    }
+
+    // Adicionar eventos aos botões do modal
+    const loginButton = document.getElementById("login-button-admin");
+    if (loginButton) {
+        loginButton.addEventListener("click", () => {
+            const email = document.getElementById("admin-email")?.value;
+            const password = document.getElementById("admin-password")?.value;
+            if (email && password) {
+                loginAdmin(email, password);
+            }
+        });
+    }
+
+    const registerButton = document.getElementById("register-button-admin");
+    if (registerButton) {
+        registerButton.addEventListener("click", () => {
+            const email = document.getElementById("register-email")?.value;
+            const password = document.getElementById("register-password")?.value;
+            if (email && password) {
+                registerAdmin(email, password);
+            }
+        });
+    }
+
+    const showRegisterLink = document.getElementById("show-register");
+    if (showRegisterLink) {
+        showRegisterLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            toggleFields(true);
+        });
+    }
+
+    const showLoginLink = document.getElementById("show-login");
+    if (showLoginLink) {
+        showLoginLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            toggleFields(false);
+        });
+    }
+
+    const loginButtonTrabalhador = document.getElementById("login-button-trabalhador");
+    if (loginButtonTrabalhador) {
+        loginButtonTrabalhador.addEventListener("click", () => {
+            loginAsTrabalhador();
+        });
+    }
+
+    const loginButtonChefe = document.getElementById("login-button-chefe");
+    if (loginButtonChefe) {
+        loginButtonChefe.addEventListener("click", () => {
+            loginAsChefe();
+        });
+    }
+
+    // Evento de clique para exportar registros
+    const btnExportarRegistros = document.querySelector(".btn-exportar-registros");
+    if (btnExportarRegistros) {
+        btnExportarRegistros.addEventListener("click", function() {
+            console.log("Botão de exportar clicado"); // Debug
+            fetch(`${API_URL}/exportar_registros`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Erro ao exportar registros.");
+                    }
+                    return response.blob(); // Recebe o arquivo como blob
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.style.display = "none";
+                    a.href = url;
+
+                    // Obter o nome do mês anterior
+                    const data = new Date();
+                    data.setMonth(data.getMonth() - 1);
+                    const nomeMesAnterior = data.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+                    
+                    a.download = `registros_trabalho_${nomeMesAnterior}.xlsx`; // Nome do arquivo com o mês anterior
+                    console.log("Baixando arquivo:", a.download); // Debug
+
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(error => {
+                    console.error("Erro ao baixar o arquivo:", error);
+                    alert("Erro ao baixar os registros. Por favor, tente novamente.");
+                });
+        });
+    } else {
+        console.warn("Botão de exportar registros não encontrado"); // Debug
     }
 });
 
@@ -416,7 +511,7 @@ function listarTarefas() {
                 item.innerHTML = `
                     <strong>ID:</strong> ${tarefa.id}<br>
                     <strong>Nome:</strong> ${tarefa.nome}<br>
-                    <strong>Seção:</strong> ${tarefa.secao}<br>
+                    <strong>Secção:</strong> ${tarefa.secao}<br>
                 `;
 
 
@@ -964,4 +1059,109 @@ function listarRegistro() {
             });
         })
         .catch(error => console.error("Erro ao carregar os registros de trabalho:", error));
+}
+
+// Função auxiliar para obter o nome do mês anterior
+function obterNomeMesAnterior() {
+    const dataAtual = new Date();
+    const mesAnterior = new Date(dataAtual.getFullYear(), dataAtual.getMonth() - 1, 1);
+    const opcoes = { month: 'long' }; // Formato longo para o nome do mês
+    return mesAnterior.toLocaleString('pt-BR', opcoes); // Formata o mês em português
+}
+
+// Evento de clique para exportar registros
+const btnExportarRegistros = document.getElementById("btn-exportar-registros");
+if (btnExportarRegistros) {
+    btnExportarRegistros.addEventListener("click", function() {
+        fetch(`${API_URL}/exportar_registros`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Erro ao exportar registros.");
+                }
+                return response.blob(); // Recebe o arquivo como blob
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.style.display = "none";
+                a.href = url;
+
+                // Obter o nome do mês anterior
+                const nomeMesAnterior = obterNomeMesAnterior();
+                a.download = `registros_trabalho_${nomeMesAnterior}.xlsx`; // Nome do arquivo com o mês anterior
+
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => console.error("Erro ao baixar o arquivo:", error));
+    });
+}
+
+// Função para alternar os campos de login e registro
+function toggleFields(isRegister) {
+    if (isRegister) {
+        document.getElementById("login-fields").style.display = "none"; // Oculta os campos de login
+        document.getElementById("register-fields").style.display = "block"; // Mostra os campos de registro
+        document.getElementById("authModalLabel").textContent = "Registrar como Admin"; // Atualiza o título do modal
+    } else {
+        document.getElementById("login-fields").style.display = "block"; // Mostra os campos de login
+        document.getElementById("register-fields").style.display = "none"; // Oculta os campos de registro
+        document.getElementById("authModalLabel").textContent = "Login como Admin"; // Atualiza o título do modal
+    }
+}
+
+// Função para registrar um novo admin
+function registerAdmin(email, password) {
+    fetch(`${API_URL}/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.message || 'Falha no registro');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        document.getElementById("auth-message").textContent = data.message;
+        const modal = bootstrap.Modal.getInstance(document.getElementById("authModal"));
+        if (modal) {
+            modal.hide();
+        }
+    })
+    .catch(error => {
+        document.getElementById("auth-message").textContent = `Erro: ${error.message}`;
+    });
+}
+
+// Função para fazer login como admin
+function loginAdmin(email, password) {
+    fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.message || 'Falha na autenticação');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        document.getElementById("auth-message").textContent = data.message;
+        const modal = bootstrap.Modal.getInstance(document.getElementById("authModal"));
+        if (modal) {
+            modal.hide();
+        }
+        document.getElementById("layout-compartilhado").style.display = "block";
+    })
+    .catch(error => {
+        document.getElementById("auth-message").textContent = `Erro: ${error.message}`;
+    });
 }

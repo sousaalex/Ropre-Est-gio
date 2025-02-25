@@ -1,7 +1,6 @@
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
-from datetime import datetime, timezone
-from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime, timezone, timedelta
 from PIL import Image, ImageDraw, ImageFont
 from reportlab.lib.pagesizes import A4
 from reportlab.pdfgen import canvas
@@ -14,9 +13,15 @@ import json
 import qrcode
 import firebase_admin
 from firebase_admin import credentials, firestore
+from firebase_admin import auth
 import base64
 from io import BytesIO
 import tempfile
+import pandas as pd
+from openpyxl import Workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.styles import PatternFill, Font, Border, Side
+
 
 
 app = Flask(__name__)
@@ -25,16 +30,23 @@ CORS(app)
 
 
 # Configuração do Firebase
+print("Iniciando configuração do Firebase...")
 if os.getenv('VERCEL_ENV'):
-    # Em produção (Vercel)
+    print("Usando credenciais do ambiente Vercel")
     firebase_credentials = json.loads(os.getenv('FIREBASE_CREDENTIALS'))
     cred = credentials.Certificate(firebase_credentials)
 else:
-    # Em desenvolvimento local
+    print("Usando credenciais do arquivo local")
     cred = credentials.Certificate("firebase_credentials.json")
 
-firebase_admin.initialize_app(cred)
-db = firestore.client()
+try:
+    firebase_admin.initialize_app(cred)
+    print("✅ Firebase inicializado com sucesso!")
+    db = firestore.client()
+    print("✅ Cliente Firestore criado!")
+except Exception as e:
+    print(f"❌ Erro ao inicializar Firebase: {e}")
+    raise e
 
 
 
@@ -111,7 +123,7 @@ def add_trabalhador():
         is_chefe = data.get('chefe', False)
 
         if not nome:
-            return jsonify({'message': 'Nome do trabalhador é obrigatório'}), 400
+            return jsonify({'message': 'Nome do trabalhador é obrigatório.'}), 400
 
         # Criar trabalhador no Firestore para obter o ID
         trabalhador_ref = db.collection('trabalhadores').add({'nome': nome, 'chefe': is_chefe})
@@ -499,7 +511,7 @@ def gerar_pdf_tarefa(tarefa_id):
 
         informacoes = [
             f"Nome da Tarefa: {tarefa['nome']}",
-            f"Seção: {tarefa.get('secao', 'Não especificada')}",
+            f"Secção: {tarefa.get('secao', 'Não especificada')}",
         ]
 
         # Adicionar as informações ao PDF
@@ -567,7 +579,7 @@ def get_registro_trabalho():
                 secoes_ref = db.collection('registros_trabalho').document(dia_id).collection('paletes_trabalhadas').document(palete_id).collection('secoes').stream()
                 for secao_doc in secoes_ref:
                     secao_id = secao_doc.id
-                    print(f"📍 Seção encontrada: {secao_id}")
+                    print(f"📍 Secção encontrada: {secao_id}")
 
                     registro_dia["paletes_trabalhadas"][palete_id]["secoes"][secao_id] = {"tarefas": {}}
 
@@ -626,7 +638,7 @@ def registrar_trabalho():
         palete_id = extrair_valor(palete_qr, "ID:")
         secao = extrair_valor(tarefa_qr, "Secao:") or "Default"
 
-        print(f"✅ Seção extraída: {secao}")
+        print(f"✅ Secção extraída: {secao}")
 
         # Verificar se a tarefa existe
         tarefa_ref = db.collection('tarefas').document(tarefa_id)
@@ -657,7 +669,7 @@ def registrar_trabalho():
         secao_ref = palete_ref.collection('secoes').document(secao)
         if not secao_ref.get().exists:
             secao_ref.set({'nome': secao})
-        print(f"📍 Registro da seção criado/atualizado: {secao}")
+        print(f"📍 Registro da secção criado/atualizado: {secao}")
 
         # Registrar a tarefa
         tarefa_ref = secao_ref.collection('tarefas').document(tarefa_id)
@@ -688,7 +700,123 @@ def registrar_trabalho():
 
 
 
+# Rota para exportar registros de trabalho para Excel
+@app.route('/exportar_registros', methods=['GET'])
+def exportar_registros():
+    try:
+        registros_ref = db.collection('registros_trabalho').stream()
+        registros = []
 
+        for dia_doc in registros_ref:
+            dia_id = dia_doc.id
+            dia_data = dia_doc.to_dict().get('data', 'Desconhecido')
+
+            paletes_ref = db.collection('registros_trabalho').document(dia_id).collection('paletes_trabalhadas').stream()
+            for palete_doc in paletes_ref:
+                palete_id = palete_doc.id
+                secoes_ref = db.collection('registros_trabalho').document(dia_id).collection('paletes_trabalhadas').document(palete_id).collection('secoes').stream()
+                for secao_doc in secoes_ref:
+                    secao_id = secao_doc.id
+                    tarefas_ref = db.collection('registros_trabalho').document(dia_id).collection('paletes_trabalhadas').document(palete_id).collection('secoes').document(secao_id).collection('tarefas').stream()
+                    for tarefa_doc in tarefas_ref:
+                        tarefa_data = tarefa_doc.to_dict()
+                        registros.append({
+                            'Data': dia_data,
+                            'Palete ID': palete_id,
+                            'Secção': secao_id,
+                            'Tarefa Nome': tarefa_data.get('nome', 'Desconhecido'),
+                            'Trabalhador ID': tarefa_data.get('trabalhador_id', 'Desconhecido'),
+                            'Hora Início': tarefa_data.get('hora_inicio', 'Não informado'),
+                            'Hora Fim': tarefa_data.get('hora_fim', 'Em andamento')
+                        })
+
+        # Criar um DataFrame do pandas
+        df = pd.DataFrame(registros)
+
+        # Criar um objeto BytesIO para armazenar o arquivo Excel em memória
+        output = BytesIO()
+        workbook = Workbook()
+        worksheet = workbook.active
+
+        # Adicionar os dados do DataFrame ao worksheet
+        for r in dataframe_to_rows(df, index=False, header=True):
+            worksheet.append(r)
+
+        # Definir estilos para o cabeçalho
+        header_fill = PatternFill(start_color="FFFF00", end_color="FFFF00", fill_type="solid")  # Cor de fundo amarela
+        header_font = Font(bold=True)  # Texto em negrito
+        border_style = Border(left=Side(style='thin'), right=Side(style='thin'), top=Side(style='thin'), bottom=Side(style='thin'))  # Bordas finas
+
+        # Aplicar estilos ao cabeçalho
+        for cell in worksheet[1]:  # A primeira linha é o cabeçalho
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.border = border_style
+
+        # Aplicar bordas a todas as células
+        for row in worksheet.iter_rows(min_row=1, max_row=worksheet.max_row, min_col=1, max_col=worksheet.max_column):
+            for cell in row:
+                cell.border = border_style
+
+        # Ajustar a largura das colunas
+        for column in worksheet.columns:
+            max_length = 0
+            column_letter = column[0].column_letter  # Obter a letra da coluna
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            adjusted_width = (max_length + 2)  # Adiciona um pouco de espaço
+            worksheet.column_dimensions[column_letter].width = adjusted_width
+
+        output.seek(0)  # Voltar ao início do objeto BytesIO
+        workbook.save(output)  # Salvar o workbook no objeto BytesIO
+        output.seek(0)  # Voltar ao início do objeto BytesIO
+
+        # Limpar os registros após o download (opcional)
+        for dia_doc in registros_ref:
+            db.collection('registros_trabalho').document(dia_doc.id).delete()
+
+        # Definir o nome do arquivo aqui
+        return send_file(output, as_attachment=True, download_name='registros_trabalho.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+
+    except Exception as e:
+        print(f"Erro ao exportar registros: {e}")
+        return jsonify({'message': 'Erro ao exportar registros.', 'details': str(e)}), 500
+    
+
+
+@app.route('/register', methods=['POST'])
+def register():
+    print("Requisição de registro recebida")
+    data = request.get_json()
+    email = data.get('email')
+    password = data.get('password')
+
+    try:
+        user = auth.create_user(
+            email=email,
+            password=password
+        )
+        return jsonify({'message': 'Usuário registrado com sucesso!', 'uid': user.uid}), 201
+    except Exception as e:
+        print(f"Erro ao registrar usuário: {e}")
+        return jsonify({'message': 'Erro ao registrar usuário.', 'details': str(e)}), 400
+
+@app.route('/login', methods=['POST'])
+def login():
+    data = request.get_json()
+    id_token = data.get('idToken')  # Recebe o token do frontend
+
+    try:
+        # Verifica o token do Firebase
+        decoded_token = auth.verify_id_token(id_token)
+        uid = decoded_token['uid']
+        return jsonify({'message': 'Usuário autenticado com sucesso!', 'uid': uid}), 200
+    except Exception as e:
+        return jsonify({'message': 'Erro ao autenticar usuário.', 'details': str(e)}), 401
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
