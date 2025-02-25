@@ -6,7 +6,7 @@
       "use": "@vercel/python"
     },
     {
-      "src": "static/fonts/**/*",
+      "src": "static/**/*",
       "use": "@vercel/static"
     },
     {
@@ -20,12 +20,15 @@
       "dest": "/index.html"
     },
     {
-      "src": "/static/fonts/(.*)",
-      "dest": "/static/fonts/$1"
+      "src": "/static/(.*)",
+      "dest": "/static/$1"
     },
     {
       "src": "/(.*)",
-      "dest": "api.py"
+      "dest": "/api.py"
     }
-  ]
+  ],
+  "env": {
+    "PYTHONPATH": "."
+  }
 }
