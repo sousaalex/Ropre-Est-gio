@@ -2,8 +2,8 @@ console.log("Hostname atual:", window.location.hostname);
 
 const API_URL = window.location.hostname.includes("localhost") || 
                 window.location.hostname.includes("127.0.0.1") ||
-                window.location.hostname.includes("192.168.0.113")
-  ? "http://192.168.0.113:5000" // URL do backend local
+                window.location.hostname.includes("192.168.30.20")
+  ? "http://192.168.30.20:5000" // URL do backend local
   : `https://${window.location.hostname}/`; // URL do Vercel (produção ou preview)
 
 console.log("Verificando se o JavaScript está sendo carregado corretamente...");
@@ -93,42 +93,94 @@ document.addEventListener("DOMContentLoaded", () => {
     const loginButton = document.getElementById("login-button-admin");
     if (loginButton) {
         loginButton.addEventListener("click", () => {
-            const email = document.getElementById("admin-email").value;
-            const password = document.getElementById("admin-password").value;
-            loginAdmin(email, password);
+            const email = document.getElementById("admin-email")?.value;
+            const password = document.getElementById("admin-password")?.value;
+            if (email && password) {
+                loginAdmin(email, password);
+            }
         });
-    } else {
-        console.error("Botão de login não encontrado.");
     }
 
     const registerButton = document.getElementById("register-button-admin");
     if (registerButton) {
         registerButton.addEventListener("click", () => {
-            const email = document.getElementById("register-email").value;
-            const password = document.getElementById("register-password").value;
-            registerAdmin(email, password);
+            const email = document.getElementById("register-email")?.value;
+            const password = document.getElementById("register-password")?.value;
+            if (email && password) {
+                registerAdmin(email, password);
+            }
         });
-    } else {
-        console.error("Botão de registro não encontrado.");
     }
 
-    document.getElementById("show-register").addEventListener("click", (event) => {
-        event.preventDefault(); // Impede o comportamento padrão do link
-        toggleFields(true); // Muda para o modo de registro
-    });
+    const showRegisterLink = document.getElementById("show-register");
+    if (showRegisterLink) {
+        showRegisterLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            toggleFields(true);
+        });
+    }
 
-    document.getElementById("show-login").addEventListener("click", (event) => {
-        event.preventDefault(); // Impede o comportamento padrão do link
-        toggleFields(false); // Muda para o modo de login
-    });
+    const showLoginLink = document.getElementById("show-login");
+    if (showLoginLink) {
+        showLoginLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            toggleFields(false);
+        });
+    }
 
-    document.getElementById("login-button-chefe").addEventListener("click", () => {
-        loginAsChefe(); // Chama a função sem precisar de email
-    });
+    const loginButtonTrabalhador = document.getElementById("login-button-trabalhador");
+    if (loginButtonTrabalhador) {
+        loginButtonTrabalhador.addEventListener("click", () => {
+            loginAsTrabalhador();
+        });
+    }
 
-    document.getElementById("login-button-trabalhador").addEventListener("click", () => {
-        loginAsTrabalhador();
-    });
+    const loginButtonChefe = document.getElementById("login-button-chefe");
+    if (loginButtonChefe) {
+        loginButtonChefe.addEventListener("click", () => {
+            loginAsChefe();
+        });
+    }
+
+    // Evento de clique para exportar registros
+    const btnExportarRegistros = document.querySelector(".btn-exportar-registros");
+    if (btnExportarRegistros) {
+        btnExportarRegistros.addEventListener("click", function() {
+            console.log("Botão de exportar clicado"); // Debug
+            fetch(`${API_URL}/exportar_registros`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Erro ao exportar registros.");
+                    }
+                    return response.blob(); // Recebe o arquivo como blob
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.style.display = "none";
+                    a.href = url;
+
+                    // Obter o nome do mês anterior
+                    const data = new Date();
+                    data.setMonth(data.getMonth() - 1);
+                    const nomeMesAnterior = data.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+                    
+                    a.download = `registros_trabalho_${nomeMesAnterior}.xlsx`; // Nome do arquivo com o mês anterior
+                    console.log("Baixando arquivo:", a.download); // Debug
+
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(error => {
+                    console.error("Erro ao baixar o arquivo:", error);
+                    alert("Erro ao baixar os registros. Por favor, tente novamente.");
+                });
+        });
+    } else {
+        console.warn("Botão de exportar registros não encontrado"); // Debug
+    }
 });
 
 
@@ -809,7 +861,7 @@ function processQRCode(decodedText) {
 
     const { tipoQR, idQR, secao } = identificarTipoQR(decodedText);
 
-    console.log("🛠 Tipo identificado:", tipoQR, "ID:", idQR, "Secção:", secao);
+    console.log("🛠 Tipo identificado:", tipoQR, "ID:", idQR, "Seção:", secao);
 
     if (tipoQR === "desconhecido") {
         exibirMensagemRegistro("⚠️ QR Code não reconhecido. Tente novamente.", "erro");
@@ -820,7 +872,7 @@ function processQRCode(decodedText) {
         dadosRegistro.tarefa = idQR;
         if (secao) {
             dadosRegistro.secao = secao;
-            console.log("✅ Secção armazenada:", dadosRegistro.secao);
+            console.log("✅ Seção armazenada:", dadosRegistro.secao);
         }
         estadoLeitura = "trabalhador";
         exibirMensagemRegistro("📌 Tarefa lida com sucesso! Agora escaneie o cartão do trabalhador.", "info");
@@ -1009,7 +1061,7 @@ function listarRegistro() {
         .catch(error => console.error("Erro ao carregar os registros de trabalho:", error));
 }
 
-// Função para obter o nome do mês anterior
+// Função auxiliar para obter o nome do mês anterior
 function obterNomeMesAnterior() {
     const dataAtual = new Date();
     const mesAnterior = new Date(dataAtual.getFullYear(), dataAtual.getMonth() - 1, 1);
@@ -1018,30 +1070,33 @@ function obterNomeMesAnterior() {
 }
 
 // Evento de clique para exportar registros
-document.getElementById("btn-exportar-registros").addEventListener("click", function() {
-    fetch(`${API_URL}/exportar_registros`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error("Erro ao exportar registros.");
-            }
-            return response.blob(); // Recebe o arquivo como blob
-        })
-        .then(blob => {
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement("a");
-            a.style.display = "none";
-            a.href = url;
+const btnExportarRegistros = document.getElementById("btn-exportar-registros");
+if (btnExportarRegistros) {
+    btnExportarRegistros.addEventListener("click", function() {
+        fetch(`${API_URL}/exportar_registros`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Erro ao exportar registros.");
+                }
+                return response.blob(); // Recebe o arquivo como blob
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.style.display = "none";
+                a.href = url;
 
-            // Obter o nome do mês anterior
-            const nomeMesAnterior = obterNomeMesAnterior();
-            a.download = `registros_trabalho_${nomeMesAnterior}.xlsx`; // Nome do arquivo com o mês anterior
+                // Obter o nome do mês anterior
+                const nomeMesAnterior = obterNomeMesAnterior();
+                a.download = `registros_trabalho_${nomeMesAnterior}.xlsx`; // Nome do arquivo com o mês anterior
 
-            document.body.appendChild(a);
-            a.click();
-            window.URL.revokeObjectURL(url);
-        })
-        .catch(error => console.error("Erro ao baixar o arquivo:", error));
-});
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => console.error("Erro ao baixar o arquivo:", error));
+    });
+}
 
 // Função para alternar os campos de login e registro
 function toggleFields(isRegister) {
@@ -1066,7 +1121,7 @@ function registerAdmin(email, password) {
     .then(response => {
         if (!response.ok) {
             return response.json().then(err => {
-                throw new Error(err.message);
+                throw new Error(err.message || 'Falha no registro');
             });
         }
         return response.json();
@@ -1074,8 +1129,9 @@ function registerAdmin(email, password) {
     .then(data => {
         document.getElementById("auth-message").textContent = data.message;
         const modal = bootstrap.Modal.getInstance(document.getElementById("authModal"));
-        modal.hide();
-        // Não chamar definirLayout aqui, pois já foi definido no popup
+        if (modal) {
+            modal.hide();
+        }
     })
     .catch(error => {
         document.getElementById("auth-message").textContent = `Erro: ${error.message}`;
@@ -1084,44 +1140,28 @@ function registerAdmin(email, password) {
 
 // Função para fazer login como admin
 function loginAdmin(email, password) {
-    // Autentica o usuário com Firebase
-    firebase.auth().signInWithEmailAndPassword(email, password)
-        .then((userCredential) => {
-            // Obter o token do usuário autenticado
-            return userCredential.user.getIdToken();
-        })
-        .then((idToken) => {
-            // Enviar o token para o backend
-            return fetch(`${API_URL}/login`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ idToken: idToken })
+    fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.message || 'Falha na autenticação');
             });
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(err => {
-                    // Exibir mensagem de erro e manter o modal aberto
-                    document.getElementById("auth-message").textContent = err.message;
-                    throw new Error(err.message);
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            document.getElementById("auth-message").textContent = data.message;
-            const modal = bootstrap.Modal.getInstance(document.getElementById("authModal"));
+        }
+        return response.json();
+    })
+    .then(data => {
+        document.getElementById("auth-message").textContent = data.message;
+        const modal = bootstrap.Modal.getInstance(document.getElementById("authModal"));
+        if (modal) {
             modal.hide();
-
-            // Exibir o layout compartilhado apenas após login bem-sucedido
-            document.getElementById("layout-compartilhado").style.display = "block"; // Mostra o layout compartilhado
-        })
-        .catch(error => {
-            // Não esconda o modal se houver um erro
-            console.error("Erro ao fazer login:", error.message);
-        });
+        }
+        document.getElementById("layout-compartilhado").style.display = "block";
+    })
+    .catch(error => {
+        document.getElementById("auth-message").textContent = `Erro: ${error.message}`;
+    });
 }
-
-
-
-

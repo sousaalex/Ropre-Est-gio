@@ -1,3 +1,4 @@
+
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 from datetime import datetime, timezone, timedelta
@@ -30,16 +31,23 @@ CORS(app)
 
 
 # Configuração do Firebase
+print("Iniciando configuração do Firebase...")
 if os.getenv('VERCEL_ENV'):
-    # Em produção (Vercel)
+    print("Usando credenciais do ambiente Vercel")
     firebase_credentials = json.loads(os.getenv('FIREBASE_CREDENTIALS'))
     cred = credentials.Certificate(firebase_credentials)
 else:
-    # Em desenvolvimento local
+    print("Usando credenciais do arquivo local")
     cred = credentials.Certificate("firebase_credentials.json")
 
-firebase_admin.initialize_app(cred)
-db = firestore.client()
+try:
+    firebase_admin.initialize_app(cred)
+    print("✅ Firebase inicializado com sucesso!")
+    db = firestore.client()
+    print("✅ Cliente Firestore criado!")
+except Exception as e:
+    print(f"❌ Erro ao inicializar Firebase: {e}")
+    raise e
 
 
 
