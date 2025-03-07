@@ -42,7 +42,15 @@
     position: relative; /* Define como um contêiner de referência para posicionamento */
 }
 
+.header-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
 
-
-
+#btn-exportar-registros {
+    margin-left: auto; /* Empurra o botão para a direita */
+    margin-top: 10px; /* Espaçamento superior */
+    /* Adicione mais estilos conforme necessário */
+}
 
