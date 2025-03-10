@@ -1,4 +1,3 @@
-
 from flask import Flask, request, jsonify, send_from_directory, send_file
 from flask_cors import CORS
 from datetime import datetime, timezone, timedelta
@@ -22,6 +21,7 @@ import pandas as pd
 from openpyxl import Workbook
 from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import PatternFill, Font, Border, Side
+import sys  # Certifique-se de importar sys
 
 
 
@@ -791,20 +791,44 @@ def exportar_registros():
 
 @app.route('/register', methods=['POST'])
 def register():
-    print("Requisição de registro recebida")
-    data = request.get_json()
-    email = data.get('email')
-    password = data.get('password')
-
+    print("Requisição de registro recebida", flush=True)
     try:
+        if not request.is_json:
+            print("Request não é JSON.", flush=True)
+            return jsonify({'message': 'Content-Type deve ser application/json'}), 400
+
+        data = request.get_json()
+        print(f"Dados recebidos: {data}", flush=True)
+        if not data or 'email' not in data or 'password' not in data:
+            print("Dados incompletos: email ou password ausentes.", flush=True)
+            return jsonify({'message': 'Email e password são obrigatórios'}), 400
+
+        email = data['email']
+        password = data['password']
+        if not email or not password:
+            print("Email ou password vazios.", flush=True)
+            return jsonify({'message': 'Email e password não podem estar vazios'}), 400
+
         user = auth.create_user(
             email=email,
             password=password
         )
-        return jsonify({'message': 'Usuário registrado com sucesso!', 'uid': user.uid}), 201
+        print(f"Usuário criado com sucesso: {user.uid}", flush=True)
+        return jsonify({
+            'message': 'Usuário registrado com sucesso!',
+            'uid': user.uid,
+            'email': email
+        }), 201
+
+    except auth.EmailAlreadyExistsError:
+        print("Erro: Email já está em uso", flush=True)
+        return jsonify({'message': 'Este email já está registrado'}), 409
+    except ValueError as e:
+        print(f"Erro de validação: {str(e)}", flush=True)
+        return jsonify({'message': 'Dados inválidos', 'details': str(e)}), 400
     except Exception as e:
-        print(f"Erro ao registrar usuário: {e}")
-        return jsonify({'message': 'Erro ao registrar usuário.', 'details': str(e)}), 400
+        print(f"Erro inesperado no registro: {str(e)}", flush=True)
+        return jsonify({'message': 'Erro interno no servidor', 'details': str(e)}), 500
 
 @app.route('/login', methods=['POST'])
 def login():
@@ -820,4 +844,4 @@ def login():
         return jsonify({'message': 'Erro ao autenticar usuário.', 'details': str(e)}), 401
 
 if __name__ == '__main__':
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="0.0.0.0", port=5000)

@@ -3,8 +3,8 @@ console.log("Hostname atual:", window.location.hostname);
 const API_URL = window.location.hostname.includes("localhost") || 
                 window.location.hostname.includes("127.0.0.1") ||
                 window.location.hostname.includes("192.168.30.20")
-  ? "http://192.168.30.20:5000" // URL do backend local
-  : `https://${window.location.hostname}/`; // URL do Vercel (produção ou preview)
+  ? "http://localhost:5000" // URL do backend local
+  : `https://gestao-fabrica.vercel.app/`; // URL do Vercel (produção ou preview)
 
 console.log("Verificando se o JavaScript está sendo carregado corretamente...");
 console.log(`API_URL configurada: ${API_URL}`);
