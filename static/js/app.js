@@ -2,22 +2,33 @@ console.log("Hostname atual:", window.location.hostname);
 
 const API_URL = window.location.hostname.includes("localhost") || 
                 window.location.hostname.includes("127.0.0.1") ||
-                window.location.hostname.includes("10.0.1.242")
-  ? "http://10.0.1.242:5000" // URL do backend local
-  : `https://${window.location.hostname}/`; // URL do Vercel (produção ou preview)
+                window.location.hostname.includes("192.168.30.20")
+  ? "http://localhost:5000" // URL do backend local
+  : `https://gestao-fabrica.vercel.app/`; // URL do Vercel (produção ou preview)
 
 console.log("Verificando se o JavaScript está sendo carregado corretamente...");
 console.log(`API_URL configurada: ${API_URL}`);
 
+let secaoGlobal = null;  // Armazena a seção corretamente
+
+
 // Aguarda o carregamento completo do DOM
 document.addEventListener("DOMContentLoaded", () => {
-
     console.log("✅ DOM totalmente carregado! Isso significa que os eventos devem estar funcionais.");
 
     // Solicitar o tipo de usuário e configurar o layout
     const tipoUsuario = prompt("Digite o tipo de usuário (admin, chefe, funcionario):").toLowerCase();
     definirLayout(tipoUsuario);
     configurarScanner(tipoUsuario);
+
+    // Se o tipo de usuário for admin, mostrar o modal de login
+    if (tipoUsuario === "admin") {
+        const modal = new bootstrap.Modal(document.getElementById("authModal"), {
+            backdrop: 'static', // Impede o fechamento ao clicar fora
+            keyboard: false // Impede o fechamento ao pressionar Esc
+        });
+        modal.show();
+    }
 
     // Adicionar evento ao formulário para adicionar trabalhador
     const formAdicionarTrabalhador = document.getElementById("form-adicionar-trabalhador");
@@ -35,10 +46,6 @@ document.addEventListener("DOMContentLoaded", () => {
         console.error("Formulário 'formAdicionarTarefa' não encontrado.");
     }
 
-
-    
-
-
     // Lista trabalhadores e paletes ao carregar
     listarTrabalhadores();
 
@@ -48,8 +55,6 @@ document.addEventListener("DOMContentLoaded", () => {
         tab.addEventListener("shown.bs.tab", function (event) {
             const targetId = event.target.getAttribute("href");
             console.log(`Aba ativada: ${targetId}`);  // Log para verificar qual aba está sendo ativada
-
-
 
             // Identifica qual aba foi ativada e chama a função correspondente
             if (targetId === "#tab-trabalhadores") {
@@ -82,6 +87,99 @@ document.addEventListener("DOMContentLoaded", () => {
 
         // Atualiza o campo "Data e Hora" a cada segundo
         setInterval(atualizarDataHora, 1000);
+    }
+
+    // Adicionar eventos aos botões do modal
+    const loginButton = document.getElementById("login-button-admin");
+    if (loginButton) {
+        loginButton.addEventListener("click", () => {
+            const email = document.getElementById("admin-email")?.value;
+            const password = document.getElementById("admin-password")?.value;
+            if (email && password) {
+                loginAdmin(email, password);
+            }
+        });
+    }
+
+    const registerButton = document.getElementById("register-button-admin");
+    if (registerButton) {
+        registerButton.addEventListener("click", () => {
+            const email = document.getElementById("register-email")?.value;
+            const password = document.getElementById("register-password")?.value;
+            if (email && password) {
+                registerAdmin(email, password);
+            }
+        });
+    }
+
+    const showRegisterLink = document.getElementById("show-register");
+    if (showRegisterLink) {
+        showRegisterLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            toggleFields(true);
+        });
+    }
+
+    const showLoginLink = document.getElementById("show-login");
+    if (showLoginLink) {
+        showLoginLink.addEventListener("click", (e) => {
+            e.preventDefault();
+            toggleFields(false);
+        });
+    }
+
+    const loginButtonTrabalhador = document.getElementById("login-button-trabalhador");
+    if (loginButtonTrabalhador) {
+        loginButtonTrabalhador.addEventListener("click", () => {
+            loginAsTrabalhador();
+        });
+    }
+
+    const loginButtonChefe = document.getElementById("login-button-chefe");
+    if (loginButtonChefe) {
+        loginButtonChefe.addEventListener("click", () => {
+            loginAsChefe();
+        });
+    }
+
+    // Evento de clique para exportar registros
+    const btnExportarRegistros = document.querySelector(".btn-exportar-registros");
+    if (btnExportarRegistros) {
+        btnExportarRegistros.addEventListener("click", function() {
+            console.log("Botão de exportar clicado"); // Debug
+            fetch(`${API_URL}/exportar_registros`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error("Erro ao exportar registros.");
+                    }
+                    return response.blob(); // Recebe o arquivo como blob
+                })
+                .then(blob => {
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.style.display = "none";
+                    a.href = url;
+
+                    // Obter o nome do mês anterior
+                    const data = new Date();
+                    data.setMonth(data.getMonth() - 1);
+                    const nomeMesAnterior = data.toLocaleString('pt-BR', { month: 'long', year: 'numeric' });
+                    
+                    a.download = `registros_trabalho_${nomeMesAnterior}.xlsx`; // Nome do arquivo com o mês anterior
+                    console.log("Baixando arquivo:", a.download); // Debug
+
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(error => {
+                    console.error("Erro ao baixar o arquivo:", error);
+                    alert("Erro ao baixar os registros. Por favor, tente novamente.");
+                });
+        });
+    } else {
+        console.warn("Botão de exportar registros não encontrado"); // Debug
     }
 });
 
@@ -159,10 +257,13 @@ function listarTrabalhadores() {
 
                 // Texto do trabalhador
                 const trabalhadorInfo = document.createElement("span");
-                trabalhadorInfo.textContent = `${trabalhador.nome}`;
+                trabalhadorInfo.innerHTML = `
+                <strong>ID:</strong> ${trabalhador.id}<br>
+                <strong>Nome:</strong> ${trabalhador.nome}
+                `;
                 if (trabalhador.chefe) {
-                    trabalhadorInfo.innerHTML += ` <strong>(Chefe)</strong>`;
-                    trabalhadorInfo.style.fontWeight = "bold";
+                trabalhadorInfo.innerHTML += ` <strong>(Chefe)</strong>`;
+                trabalhadorInfo.style.fontWeight = "bold";
                 }
                 item.appendChild(trabalhadorInfo);
 
@@ -171,14 +272,27 @@ function listarTrabalhadores() {
                 buttonContainer.className = "d-flex gap-2";
 
                 // Botão de download do cartão de trabalhador
-                const botaoDownloadTrabalhador = document.createElement("button-trabalhadores");
+                const botaoDownloadTrabalhador = document.createElement("button");
                 botaoDownloadTrabalhador.className = "btn btn-secondary btn-sm";
                 botaoDownloadTrabalhador.innerHTML = `<i class="bi bi-download"></i> Cartão Trabalhador`;
                 botaoDownloadTrabalhador.onclick = () => {
-                    const linkTrabalhador = `${API_URL}/cartao/${trabalhador.id}`;
+                    const linkTrabalhador = `${API_URL}/cartao/${trabalhador.id}/trabalhador`;
                     window.open(linkTrabalhador, "_blank");
                 };
                 buttonContainer.appendChild(botaoDownloadTrabalhador);
+
+                // Se for chefe, criar também o botão de download do cartão de chefe
+                if (trabalhador.chefe) {
+                    const botaoDownloadChefe = document.createElement("button");
+                    botaoDownloadChefe.className = "btn btn-secondary btn-sm"; 
+                    botaoDownloadChefe.innerHTML = `<i class="bi bi-download"></i> Cartão Chefe`;
+                    botaoDownloadChefe.onclick = () => {
+                        const linkChefe = `${API_URL}/cartao/${trabalhador.id}/chefe`;
+                        window.open(linkChefe, "_blank");
+                    };
+                    buttonContainer.appendChild(botaoDownloadChefe);
+                }
+
 
                 // Botão de remover
                 const botaoRemover = document.createElement("button-trabalhadores");
@@ -397,7 +511,7 @@ function listarTarefas() {
                 item.innerHTML = `
                     <strong>ID:</strong> ${tarefa.id}<br>
                     <strong>Nome:</strong> ${tarefa.nome}<br>
-                    <strong>Seção:</strong> ${tarefa.secao}<br>
+                    <strong>Secção:</strong> ${tarefa.secao}<br>
                 `;
 
 
@@ -408,7 +522,7 @@ function listarTarefas() {
 
                 // Adiciona botão de baixar QR Code
                 const botaoBaixarPDF = document.createElement("button");
-                botaoBaixarPDF.textContent = "Baixar PDF";
+                botaoBaixarPDF.innerHTML = '<i class="bi bi-download"></i> Baixar PDF';
                 botaoBaixarPDF.className = "btn btn-secondary btn-sm";
                 botaoBaixarPDF.onclick = () => {
                     window.open(`${API_URL}/tarefas/${tarefa.id}/pdf`, "_blank");
@@ -680,6 +794,7 @@ function listarPaletes() {
 
 
 
+// **Estado inicial dos dados**
 let dadosRegistro = {
     tarefa: null,
     trabalhador: null,
@@ -687,8 +802,29 @@ let dadosRegistro = {
 };
 
 let estadoLeitura = "tarefa"; // Define o estado inicial como "tarefa"
+let scannerAtivo = false; // Evita múltiplas inicializações
+let html5QrCode; // Variável global para o scanner
 
-// Inicializa o leitor de QR Code
+// **Função para resetar o scanner e o estado**
+function resetarEstadoScanner() {
+    dadosRegistro = {
+        tarefa: null,
+        trabalhador: null,
+        palete: null
+    };
+    estadoLeitura = "tarefa"; // Reinicia o estado para "tarefa"
+    scannerAtivo = false; // Permite reiniciar o scanner
+    atualizarProgresso(0); // Reseta a barra de progresso
+    exibirMensagemRegistro("📷 Escaneie o QR Code da Tarefa para começar.", "info");
+
+    if (html5QrCode) {
+        html5QrCode.stop().then(() => {
+            console.log("🔄 Scanner reiniciado.");
+        }).catch(err => console.error("❌ Erro ao parar o scanner:", err));
+    }
+}
+
+// **Inicializa o scanner de QR Code**
 function startQRCodeScanner(readerId) {
     const readerElement = document.getElementById(readerId);
     if (!readerElement) {
@@ -696,90 +832,191 @@ function startQRCodeScanner(readerId) {
         return;
     }
 
-    const html5QrCode = new Html5Qrcode(readerId);
+    if (scannerAtivo) return; // Evita iniciar o scanner mais de uma vez
+    scannerAtivo = true;
+
+    exibirMensagemRegistro("📷 Escaneie o QR Code da Tarefa para começar.", "info");
+    atualizarProgresso(0); // Reinicia a barra de progresso
+
+    html5QrCode = new Html5Qrcode(readerId);
     const config = { fps: 10, qrbox: { width: 250, height: 250 } };
 
     html5QrCode
         .start(
-            { facingMode: "environment" }, // Usa a câmera traseira
+            { facingMode: "user" },
             config,
             (decodedText) => processQRCode(decodedText),
-            (errorMessage) => console.warn("Erro ao ler QR Code:", errorMessage)
+            (errorMessage) => {
+                if (!errorMessage.includes("No MultiFormat Readers were able to detect the code.")) {
+                    console.warn("Erro ao ler QR Code:", errorMessage);
+                }
+            }
         )
-        .catch((err) => console.error("Erro ao iniciar o scanner:", err));
+        .catch(err => console.error("Erro ao iniciar o scanner:", err));
 }
 
-// Processar leitura dos QR Codes
+// **Processar a leitura dos QR Codes**
 function processQRCode(decodedText) {
-    console.log("Estado atual:", estadoLeitura);
-    console.log("QR Code lido:", decodedText);
+    console.log("📸 QR Code lido:", decodedText);
 
-    if (estadoLeitura === "tarefa" && !dadosRegistro.tarefa) {
-        dadosRegistro.tarefa = decodedText;
-        estadoLeitura = "trabalhador"; // Atualiza o estado
+    const { tipoQR, idQR, secao } = identificarTipoQR(decodedText);
+
+    console.log("🛠 Tipo identificado:", tipoQR, "ID:", idQR, "Seção:", secao);
+
+    if (tipoQR === "desconhecido") {
+        exibirMensagemRegistro("⚠️ QR Code não reconhecido. Tente novamente.", "erro");
+        return;
+    }
+
+    if (estadoLeitura === "tarefa" && tipoQR === "tarefa" && !dadosRegistro.tarefa) {
+        dadosRegistro.tarefa = idQR;
+        if (secao) {
+            dadosRegistro.secao = secao;
+            console.log("✅ Seção armazenada:", dadosRegistro.secao);
+        }
+        estadoLeitura = "trabalhador";
         exibirMensagemRegistro("📌 Tarefa lida com sucesso! Agora escaneie o cartão do trabalhador.", "info");
+        atualizarProgresso(33);
 
-    } else if (estadoLeitura === "trabalhador" && !dadosRegistro.trabalhador) {
-        dadosRegistro.trabalhador = decodedText;
-        estadoLeitura = "palete"; // Atualiza o estado
+    } else if (estadoLeitura === "trabalhador" && (tipoQR === "trabalhador" || tipoQR === "chefe") && !dadosRegistro.trabalhador) {
+        dadosRegistro.trabalhador = idQR;
+        estadoLeitura = "palete";
         exibirMensagemRegistro("📌 Trabalhador lido com sucesso! Agora escaneie a palete.", "info");
+        atualizarProgresso(66);
 
-    } else if (estadoLeitura === "palete" && !dadosRegistro.palete) {
-        dadosRegistro.palete = decodedText;
+    } else if (estadoLeitura === "palete" && tipoQR === "palete" && !dadosRegistro.palete) {
+        dadosRegistro.palete = idQR;
         exibirMensagemRegistro("✅ Palete lida com sucesso! Registrando trabalho...", "sucesso");
+        atualizarProgresso(100);
 
-        // Enviar os dados para a API
-        registrarTrabalho();
+        registrarTrabalho(); // Envia os dados para a API
+        resetarEstadoScanner(); // Reseta o estado após registro
 
-        // Resetar os dados para um novo registro
-        setTimeout(() => {
-            dadosRegistro = { tarefa: null, trabalhador: null, palete: null };
-            estadoLeitura = "tarefa"; // Reinicia o estado
-            exibirMensagemRegistro("📷 Escaneie o QR Code da tarefa para iniciar um novo registro.", "info");
-        }, 3000);
     } else {
-        exibirMensagemRegistro("⚠️ QR Code já lido ou fora de sequência. Escaneie o próximo QR Code.", "erro");
+        exibirMensagemRegistro("⚠️ QR Code incorreto ou já lido. Escaneie o correto.", "erro");
     }
 }
 
-// Função para enviar os dados do registro para a API
-function registrarTrabalho() {
-    console.log("Dados preparados para envio:", JSON.stringify(dadosRegistro));
 
-    fetch(`${API_URL}/registro_trabalho`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json; charset=utf-8" },
-        body: JSON.stringify({
-            tarefa_qr: dadosRegistro.tarefa,
-            trabalhador_qr: dadosRegistro.trabalhador,
-            palete_qr: dadosRegistro.palete
-        })
-    })
-        .then(response => response.json())
-        .then(data => {
-            console.log("Resposta da API:", data);
-            exibirMensagemRegistro(`✅ ${data.message}`, "sucesso");
-        })
-        .catch(error => {
-            console.error("Erro ao registrar trabalho:", error);
-            exibirMensagemRegistro("❌ Erro ao registrar trabalho. Tente novamente.", "erro");
-        });
+
+
+
+// **Identificar o tipo de QR Code**
+function identificarTipoQR(qrCodeText) {
+    console.log("🔍 Analisando QR Code:", qrCodeText);
+
+    const partes = qrCodeText.split(";");
+    let idQR = "";
+    let tipoQR = "desconhecido";
+    let secao = null;
+
+    partes.forEach(parte => {
+        const [chave, valor] = parte.split(":").map(str => str.trim());
+
+        if (chave === "ID") idQR = valor;
+        if (chave === "Tarefa") tipoQR = "tarefa";
+        if (chave === "Tipo") {
+            if (valor === "Trabalhador") tipoQR = "trabalhador";
+            if (valor === "Chefe") tipoQR = "chefe";
+        }
+        if (chave === "Secao" && tipoQR === "tarefa") {
+            secaoGlobal = valor;  // Apenas define se for uma tarefa
+            console.log("🔵 Secção atualizada globalmente:", secaoGlobal);
+        }
+        if (chave === "Referencia" || chave === "NumeroLote") tipoQR = "palete";
+    });
+
+    // Usa a seção global caso seja null (garante que mantenha o valor certo)
+    secao = secaoGlobal;
+
+    console.log("✅ Resultado da análise:", { tipoQR, idQR, secao });
+    return { tipoQR, idQR, secao };
 }
 
-// Exibir mensagens de progresso no registro
-function exibirMensagemRegistro(mensagem, tipo = "info") {
-    console.log("Mensagem exibida:", mensagem); // Log da mensagem para depuração
 
-    const mensagemRegistro = document.getElementById("mensagem-registro");
+
+
+// **Enviar os dados do registro para a API**
+function registrarTrabalho() {
+    console.log("📡 Enviando registro de trabalho...");
+
+    const payload = {
+        tarefa_qr: `ID:${dadosRegistro.tarefa};Secao:${dadosRegistro.secao}`,
+        trabalhador_qr: `ID:${dadosRegistro.trabalhador}`,
+        palete_qr: `ID:${dadosRegistro.palete}`
+    };
+
+    console.log("📤 Payload enviado para API:", payload);
+
+    fetch(`${API_URL}/registro_trabalho`, { // ✅ Usa a variável API_URL corretamente
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log("✅ Resposta da API:", data);
+        exibirMensagemRegistro("✅ Trabalho registrado com sucesso!", "sucesso");
+    })
+    .catch(error => {
+        console.error("❌ Erro ao registrar trabalho:", error);
+        exibirMensagemRegistro("❌ Erro ao registrar trabalho.", "erro");
+    });
+}
+
+
+// **Exibir mensagens de progresso no registro**
+function exibirMensagemRegistro(mensagem, tipo = "info") {
+    let mensagemRegistro = document.getElementById("mensagem-registro");
+
     if (!mensagemRegistro) {
-        console.error("Elemento para mensagens de registro não encontrado.");
-        return;
+        mensagemRegistro = document.createElement("div");
+        mensagemRegistro.id = "mensagem-registro";
+        mensagemRegistro.style.position = "fixed";
+        mensagemRegistro.style.bottom = "20px";
+        mensagemRegistro.style.left = "50%";
+        mensagemRegistro.style.transform = "translateX(-50%)";
+        mensagemRegistro.style.backgroundColor = "white";
+        mensagemRegistro.style.padding = "10px";
+        mensagemRegistro.style.border = "1px solid black";
+        mensagemRegistro.style.borderRadius = "5px";
+        mensagemRegistro.style.fontWeight = "bold";
+        mensagemRegistro.style.zIndex = "1000";
+        document.body.appendChild(mensagemRegistro);
     }
 
     mensagemRegistro.textContent = mensagem;
     mensagemRegistro.style.display = "block";
     mensagemRegistro.style.color = tipo === "sucesso" ? "green" : tipo === "erro" ? "red" : "black";
+
+    setTimeout(() => {
+        mensagemRegistro.style.display = "none";
+    }, 3000);
 }
+
+// **Atualizar a barra de progresso**
+function atualizarProgresso(porcentagem) {
+    let progressBar = document.getElementById("qr-progress-bar");
+
+    if (!progressBar) {
+        progressBar = document.createElement("div");
+        progressBar.id = "qr-progress-bar";
+        progressBar.style.width = "0%";
+        progressBar.style.height = "20px";
+        progressBar.style.backgroundColor = "#4CAF50"; // Verde
+        progressBar.style.transition = "width 0.3s ease-in-out";
+        document.body.appendChild(progressBar);
+    }
+
+    progressBar.style.width = `${porcentagem}%`;
+}
+
+
+
+
+
 
 
 
@@ -804,7 +1041,7 @@ function listarRegistro() {
 
                     Object.entries(paleteData.secoes).forEach(([secaoNome, secaoData]) => {
                         const secaoItem = document.createElement("li");
-                        secaoItem.innerHTML = `<h5>📍 Seção: ${secaoNome}</h5>`;
+                        secaoItem.innerHTML = `<h5>📍 Secção: ${secaoNome}</h5>`;
                         paleteItem.appendChild(secaoItem);
 
                         Object.entries(secaoData.tarefas).forEach(([tarefaId, tarefaInfo]) => {
@@ -822,4 +1059,109 @@ function listarRegistro() {
             });
         })
         .catch(error => console.error("Erro ao carregar os registros de trabalho:", error));
+}
+
+// Função auxiliar para obter o nome do mês anterior
+function obterNomeMesAnterior() {
+    const dataAtual = new Date();
+    const mesAnterior = new Date(dataAtual.getFullYear(), dataAtual.getMonth() - 1, 1);
+    const opcoes = { month: 'long' }; // Formato longo para o nome do mês
+    return mesAnterior.toLocaleString('pt-BR', opcoes); // Formata o mês em português
+}
+
+// Evento de clique para exportar registros
+const btnExportarRegistros = document.getElementById("btn-exportar-registros");
+if (btnExportarRegistros) {
+    btnExportarRegistros.addEventListener("click", function() {
+        fetch(`${API_URL}/exportar_registros`)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error("Erro ao exportar registros.");
+                }
+                return response.blob(); // Recebe o arquivo como blob
+            })
+            .then(blob => {
+                const url = window.URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.style.display = "none";
+                a.href = url;
+
+                // Obter o nome do mês anterior
+                const nomeMesAnterior = obterNomeMesAnterior();
+                a.download = `registros_trabalho_${nomeMesAnterior}.xlsx`; // Nome do arquivo com o mês anterior
+
+                document.body.appendChild(a);
+                a.click();
+                window.URL.revokeObjectURL(url);
+            })
+            .catch(error => console.error("Erro ao baixar o arquivo:", error));
+    });
+}
+
+// Função para alternar os campos de login e registro
+function toggleFields(isRegister) {
+    if (isRegister) {
+        document.getElementById("login-fields").style.display = "none"; // Oculta os campos de login
+        document.getElementById("register-fields").style.display = "block"; // Mostra os campos de registro
+        document.getElementById("authModalLabel").textContent = "Registrar como Admin"; // Atualiza o título do modal
+    } else {
+        document.getElementById("login-fields").style.display = "block"; // Mostra os campos de login
+        document.getElementById("register-fields").style.display = "none"; // Oculta os campos de registro
+        document.getElementById("authModalLabel").textContent = "Login como Admin"; // Atualiza o título do modal
+    }
+}
+
+// Função para registrar um novo admin
+function registerAdmin(email, password) {
+    fetch(`${API_URL}/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.message || 'Falha no registro');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        document.getElementById("auth-message").textContent = data.message;
+        const modal = bootstrap.Modal.getInstance(document.getElementById("authModal"));
+        if (modal) {
+            modal.hide();
+        }
+    })
+    .catch(error => {
+        document.getElementById("auth-message").textContent = `Erro: ${error.message}`;
+    });
+}
+
+// Função para fazer login como admin
+function loginAdmin(email, password) {
+    fetch(`${API_URL}/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password })
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => {
+                throw new Error(err.message || 'Falha na autenticação');
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        document.getElementById("auth-message").textContent = data.message;
+        const modal = bootstrap.Modal.getInstance(document.getElementById("authModal"));
+        if (modal) {
+            modal.hide();
+        }
+        document.getElementById("layout-compartilhado").style.display = "block";
+    })
+    .catch(error => {
+        document.getElementById("auth-message").textContent = `Erro: ${error.message}`;
+    });
 }

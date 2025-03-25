@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,211 +9,219 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/styles.css">
 </head>
-<body>
-    <div class="container mt-5">
-        <h1 class="text-center">Gestão de Fábrica</h1>
 
-      
-        <div id="layout-compartilhado" style="display: none;">
-            <ul class="nav nav-tabs" id="tabs">
-                <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-trabalhadores">Trabalhadores</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-paletes">Paletes</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-registro_trabalho">Registro Trabalho</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-tarefas">Tarefas</a></li>
+<body class="bg-light">
+    <div class="container mt-5">
+        <h1 class="text-center display-4 text-primary mb-5">Gestão de Fábrica</h1>
+
+        <!-- Modal de Autenticação -->
+        <div class="modal fade" id="authModal" tabindex="-1" aria-labelledby="authModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content shadow rounded-3">
+                    <div class="modal-header bg-primary text-white">
+                        <h5 class="modal-title" id="authModalLabel">Login Administrativo</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div id="admin-fields">
+                            <div id="login-fields">
+                                <input type="email" id="admin-email" class="form-control mb-3" placeholder="Email" required>
+                                <input type="password" id="admin-password" class="form-control mb-3" placeholder="Senha" required>
+                                <button id="login-button-admin" class="btn btn-primary w-100">Login</button>
+                                <div class="text-center mt-3">
+                                    <a href="#" id="show-register" class="text-decoration-none">Registrar nova conta</a>
+                                </div>
+                            </div>
+                            <div id="register-fields" style="display: none;">
+                                <input type="email" id="register-email" class="form-control mb-3" placeholder="Email" required>
+                                <input type="password" id="register-password" class="form-control mb-3" placeholder="Senha" required>
+                                <button id="register-button-admin" class="btn btn-primary w-100">Registrar</button>
+                                <div class="text-center mt-3">
+                                    <a href="#" id="show-login" class="text-decoration-none">Voltar ao login</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div id="auth-message" class="mt-3"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Layout Principal -->
+        <div id="layout-compartilhado" class="rounded-3 bg-white p-4 shadow-sm" style="display: none;">
+            <ul class="nav nav-tabs nav-justified mb-4" id="tabs">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#tab-trabalhadores">Trabalhadores</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tab-paletes">Paletes</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tab-registro_trabalho">Registro Trabalho</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tab-tarefas">Tarefas</a>
+                </li>
             </ul>
-            <div class="tab-content mt-4">
+
+            <div class="tab-content">
                 <!-- Trabalhadores -->
                 <div class="tab-pane fade show active" id="tab-trabalhadores">
                     <div class="container mt-4">
-                        <h2>Lista de Trabalhadores</h2>
-                        <ul id="lista-trabalhadores" class="list-group mt-3">
-                            <!-- Aqui será carregada a lista de trabalhadores -->
-                        </ul>
-            
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#form-adicionar-trabalhador">
+                        <h2 class="mb-4">Lista de Trabalhadores</h2>
+                        <ul id="lista-trabalhadores" class="list-group mt-3"></ul>
+                        <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#form-adicionar-trabalhador">
                             Adicionar Trabalhador
                         </button>
-    
-                        <div id="mensagem-sucesso" style="display: none; color: green; margin-top: 10px;"></div>
-
+                        <div id="mensagem-sucesso" class="mensagem-sucesso mt-3" style="display: none;"></div>
                     </div>
-            
-                    <!-- Modal do Bootstrap para adicionar trabalhador -->
+
+                    <!-- Modal Adicionar Trabalhador -->
                     <div class="modal fade" id="form-adicionar-trabalhador" tabindex="-1" aria-labelledby="modalAdicionarTrabalhadorLabel" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="modalAdicionarTrabalhadorLabel">Adicionar Trabalhador</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content shadow rounded-3">
+                                <div class="modal-header bg-primary text-white">
+                                    <h5 class="modal-title">Adicionar Trabalhador</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
-                                <div class="modal-body">
-                                    <form id="form-adicionar-trabalhador">
+                                <div class="modal-body p-4">
+                                    <form id="form-adicionar-trabalhador" class="needs-validation" novalidate>
                                         <div class="mb-3">
                                             <label for="nome-trabalhador" class="form-label">Nome:</label>
                                             <input type="text" id="nome-trabalhador" class="form-control" placeholder="Nome" required>
                                         </div>
-                                        
-                                        <div class="mb-3">
-                                            <label>
-                                                <input type="checkbox" id="is-chefe"> Definir como Chefe
-                                            </label>
+                                        <div class="form-check mb-3">
+                                            <input type="checkbox" id="is-chefe" class="form-check-input">
+                                            <label for="is-chefe" class="form-check-label">Definir como Chefe</label>
                                         </div>
-                                        <button type="submit" id="botao-adicionar" class="btn btn-primary">Salvar</button>
-                                        <div id="mensagem-sucesso" style="display: none; color: green; margin-top: 10px;"></div>
-
+                                        <button type="submit" id="botao-adicionar" class="btn btn-primary w-100">Salvar</button>
+                                        <div id="mensagem-sucesso" class="mensagem-sucesso mt-3" style="display: none;"></div>
                                     </form>
                                 </div>
                             </div>
                         </div>
                     </div>
-                    
                 </div>
-    
-                
+
                 <!-- Paletes -->
                 <div class="tab-pane fade" id="tab-paletes">
                     <div class="container mt-4">
-                        <h2>Lista de Paletes</h2>
-    
-                        <!-- Lista de paletes -->
-                        <ul id="lista-paletes" class="list-group mt-3">
-                            <!-- Aqui será carregada a lista de paletes dinamicamente -->
-                        </ul>
-                
-                        <!-- Botão para abrir o modal de adicionar palete -->
-                        <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalAdicionarPalete">
+                        <h2 class="mb-4">Lista de Paletes</h2>
+                        <ul id="lista-paletes" class="list-group mt-3"></ul>
+                        <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#modalAdicionarPalete">
                             Adicionar Palete
                         </button>
-                        <div id="mensagem-sucesso-palete" style="display: none; color: green; margin-top: 10px;"></div>
-    
-                        
+                        <div id="mensagem-sucesso-palete" class="mensagem-sucesso mt-3" style="display: none;"></div>
                     </div>
-                
-                    <!-- Modal para adicionar palete -->
+
+                    <!-- Modal Adicionar Palete -->
                     <div class="modal fade" id="modalAdicionarPalete" tabindex="-1" aria-labelledby="modalAdicionarPaleteLabel" aria-hidden="true">
-                        <div class="modal-dialog modal-lg">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="modalAdicionarPaleteLabel">Adicionar Palete</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <div class="modal-dialog modal-lg modal-dialog-centered">
+                            <div class="modal-content shadow rounded-3">
+                                <div class="modal-header bg-primary text-white">
+                                    <h5 class="modal-title">Adicionar Palete</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
-                                <div class="modal-body">
-                                    <form id="form-adicionar-palete" onsubmit="adicionarPalete(); return false;">
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="data-entrega" class="form-label">Data de Entrega:</label>
-                                                <input type="date" id="data-entrega" class="form-control" required>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="op-palete" class="form-label">OP:</label>
-                                                <input type="text" id="op-palete" class="form-control" placeholder="Número OP" required>
-                                            </div>
+                                <div class="modal-body p-4">
+                                    <form id="form-adicionar-palete" class="row g-3 needs-validation" novalidate>
+                                        <div class="col-md-6">
+                                            <label for="data-entrega" class="form-label">Data de Entrega:</label>
+                                            <input type="date" id="data-entrega" class="form-control" required>
                                         </div>
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="referencia-palete" class="form-label">Referência:</label>
-                                                <input type="text" id="referencia-palete" class="form-control" placeholder="Referência" required>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="leva-embalagem-palete" class="form-label">Leva Embalagem:</label>
-                                                <select id="leva-embalagem-palete" class="form-control" required>
-                                                    <option value="" disabled selected>Selecione...</option>
-                                                    <option value="true">Sim</option>
-                                                    <option value="false">Não</option>
-                                                </select>
-                                            </div>
+                                        <div class="col-md-6">
+                                            <label for="op-palete" class="form-label">OP:</label>
+                                            <input type="text" id="op-palete" class="form-control" placeholder="Número OP" required>
                                         </div>
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="nome-produto-palete" class="form-label">Nome do Produto:</label>
-                                                <input type="text" id="nome-produto-palete" class="form-control" placeholder="Nome do Produto" required>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="quantidade-palete" class="form-label">Quantidade:</label>
-                                                <input type="number" id="quantidade-palete" class="form-control" placeholder="Quantidade" required>
-                                            </div>
+                                        <div class="col-md-6">
+                                            <label for="referencia-palete" class="form-label">Referência:</label>
+                                            <input type="text" id="referencia-palete" class="form-control" placeholder="Referência" required>
                                         </div>
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="medida-palete" class="form-label">Medida:</label>
-                                                <input type="text" id="medida-palete" class="form-control" placeholder="Medida" required>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="data-hora-palete" class="form-label">Data e Hora:</label>
-                                                <input type="datetime-local" id="data-hora-palete" class="form-control" required>
-                                            </div>
+                                        <div class="col-md-6">
+                                            <label for="leva-embalagem-palete" class="form-label">Leva Embalagem:</label>
+                                            <select id="leva-embalagem-palete" class="form-select" required>
+                                                <option value="" disabled selected>Selecione...</option>
+                                                <option value="true">Sim</option>
+                                                <option value="false">Não</option>
+                                            </select>
                                         </div>
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="cor-botao-palete" class="form-label">Cor do Botão:</label>
-                                                <input type="text" id="cor-botao-palete" class="form-control" placeholder="Cor do Botão" required>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="numero-lote-palete" class="form-label">Número do Lote:</label>
-                                                <input type="text" id="numero-lote-palete" class="form-control" placeholder="Número do Lote" required>
-                                            </div>
+                                        <div class="col-md-6">
+                                            <label for="nome-produto-palete" class="form-label">Nome do Produto:</label>
+                                            <input type="text" id="nome-produto-palete" class="form-control" placeholder="Nome do Produto" required>
                                         </div>
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="cor-ribete-palete" class="form-label">Cor do Ribete:</label>
-                                                <input type="text" id="cor-ribete-palete" class="form-control" placeholder="Cor do Ribete" required>
-                                            </div>
+                                        <div class="col-md-6">
+                                            <label for="quantidade-palete" class="form-label">Quantidade:</label>
+                                            <input type="number" id="quantidade-palete" class="form-control" placeholder="Quantidade" required>
                                         </div>
-                                       
-                                        <button type="submit" class="btn btn-primary">Salvar</button>
-                                        <div id="mensagem-sucesso-add-palete" style="display: none; color: green; margin-top: 10px;"></div>
+                                        <div class="col-md-6">
+                                            <label for="medida-palete" class="form-label">Medida:</label>
+                                            <input type="text" id="medida-palete" class="form-control" placeholder="Medida" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="data-hora-palete" class="form-label">Data e Hora:</label>
+                                            <input type="datetime-local" id="data-hora-palete" class="form-control" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="cor-botao-palete" class="form-label">Cor do Botão:</label>
+                                            <input type="text" id="cor-botao-palete" class="form-control" placeholder="Cor do Botão" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="numero-lote-palete" class="form-label">Número do Lote:</label>
+                                            <input type="text" id="numero-lote-palete" class="form-control" placeholder="Número do Lote" required>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label for="cor-ribete-palete" class="form-label">Cor do Ribete:</label>
+                                            <input type="text" id="cor-ribete-palete" class="form-control" placeholder="Cor do Ribete" required>
+                                        </div>
+                                        <div class="col-12 text-end mt-4">
+                                            <button type="submit" class="btn btn-primary">Salvar</button>
+                                        </div>
+                                        <div id="mensagem-sucesso-add-palete" class="mensagem-sucesso mt-3" style="display: none;"></div>
                                     </form>
                                 </div>
                             </div>
                         </div>
                     </div>
-    
                 </div>
-                
-                
-                <!-- Registros Trabalho -->
+
+                <!-- Registro Trabalho -->
                 <div class="tab-pane fade" id="tab-registro_trabalho">
-                    <h3>Tarefas Concluídas</h3>
-                    <button class="btn btn-primary mb-3" onclick="listarRegistro()">Atualizar Lista</button>
-                    <ul id="lista-registro"></ul>
-                
-                    <button id="start-scanner-compartilhado" class="btn btn-primary">Iniciar Scanner</button>
-                    <div id="reader-compartilhado" style="width: 300px; height: 300px; margin: auto;"></div>
-                    <div id="mensagem-qr" style="text-align: center; margin-top: 10px;"></div>
-    
+                    <div class="header-container mb-4">
+                        <h3 class="mb-0">Registro Trabalho</h3>
+                        <button id="btn-exportar-registros" class="btn btn-success">Exportar Registros</button>
+                    </div>
+                    <ul id="lista-registro" class="list-group mt-3"></ul>
+                    <button id="start-scanner-compartilhado" class="btn btn-primary mt-3">Iniciar Scanner</button>
+                    <div id="reader-compartilhado" class="mt-3" style="width: 100%; max-width: 600px; height: 400px; margin: auto;"></div>
+                    <div id="mensagem-qr" class="text-center mt-3"></div>
                 </div>
-                
+
                 <!-- Tarefas -->
                 <div class="tab-pane fade" id="tab-tarefas">
-                    <h3>Tarefas</h3>
-                    <ul id="lista-tarefas" class="list-group-item"></ul>
-                
-                    <!-- Botão para abrir o modal -->
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAdicionarTarefa">
+                    <h3 class="mb-4">Tarefas</h3>
+                    <ul id="lista-tarefas" class="list-group mt-3"></ul>
+                    <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#modalAdicionarTarefa">
                         Adicionar Tarefa
                     </button>
-                    <div id="mensagem-sucesso-lista" style="display: none; color: green; margin-top: 10px;"></div>
+                    <div id="mensagem-sucesso-lista" class="mensagem-sucesso mt-3" style="display: none;"></div>
 
-                
-                    <!-- Modal -->
+                    <!-- Modal Adicionar Tarefa -->
                     <div class="modal fade" id="modalAdicionarTarefa" tabindex="-1" aria-labelledby="modalAdicionarTarefaLabel" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="modalAdicionarTarefaLabel">Adicionar Nova Tarefa</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        <div class="modal-dialog modal-dialog-centered">
+                            <div class="modal-content shadow rounded-3">
+                                <div class="modal-header bg-primary text-white">
+                                    <h5 class="modal-title">Adicionar Nova Tarefa</h5>
+                                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
                                 </div>
-                                <div class="modal-body">
-                                    <form id="formAdicionarTarefa">
+                                <div class="modal-body p-4">
+                                    <form id="formAdicionarTarefa" class="needs-validation" novalidate>
                                         <div class="mb-3">
                                             <label for="nomeTarefa" class="form-label">Tarefa:</label>
-                                            <input type="text" class="form-control" id="nomeTarefa" name="nome_tarefa" placeholder="Digite o nome da tarefa" required>
-
+                                            <input type="text" class="form-control" id="nomeTarefa" placeholder="Digite o nome da tarefa" required>
                                         </div>
                                         <div class="mb-3">
-                                            <label for="secao" class="form-label">Secção:</label>
-                                            <select id="secao" class="form-control">
-                                                <option value="" disabled selected>Selecione uma secção ⮟</option>
+                                            <label for="secao" class="form-label">Seção:</label>
+                                            <select id="secao" class="form-select" required>
+                                                <option value="" disabled selected>Selecione uma seção ⮟</option>
                                                 <option value="Acabamento">Acabamento</option>
                                                 <option value="Controle de Qualidade">Controle de Qualidade</option>
                                                 <option value="Serigrafia">Serigrafia</option>
@@ -225,44 +233,56 @@
                                                 <option value="Bolha">Bolha</option>
                                                 <option value="Flexografia">Flexografia</option>
                                                 <option value="Laminagem">Laminagem</option>
-                                                <option value="Maquina_Envelopes">Maquina dos envelopes</option>
-                                                <option value="Maquina_Sacos">Maquina Sacos</option>
+                                                <option value="Maquina_Envelopes">Máquina dos envelopes</option>
+                                                <option value="Maquina_Sacos">Máquina Sacos</option>
                                                 <option value="Expedição">Expedição</option>
                                                 <option value="Faturação">Faturação</option>
                                             </select>
                                         </div>
-                                        
+                                        <div class="text-end mt-4">
                                             <button type="submit" class="btn btn-primary">Salvar</button>
-                                            <div id="mensagem-sucesso-tarefa" style="display: none; color: green; margin-top: 10px;"></div>
-                                    
+                                        </div>
+                                        <div id="mensagem-sucesso-tarefa" class="mensagem-sucesso mt-3" style="display: none;"></div>
                                     </form>
                                 </div>
                             </div>
                         </div>
                     </div>
                 </div>
-                
             </div>
-         
         </div>
-        
 
-        <!-- Funcionário Layout -->
-        <div id="funcionario-layout" style="display: none;">
+        <!-- Layout Funcionário -->
+        <div id="funcionario-layout" class="mt-4 p-4 bg-white rounded-3 shadow-sm" style="display: none;">
             <div id="tab-qr-code">
-                <h2>Minhas Tarefas</h2>
-                <button id="start-scanner-funcionario" class="btn btn-primary">Iniciar Scanner</button>
-                <div id="reader-funcionario" style="width: 300px; height: 300px; margin: auto;"></div>
-                <div id="mensagem-qr" style="text-align: center; margin-top: 10px;"></div>
+                <h2 class="mb-4">Minhas Tarefas</h2>
+                <button id="start-scanner-funcionario" class="btn btn-primary mb-3">Iniciar Scanner</button>
+                <div id="reader-funcionario" style="width: 100%; max-width: 600px; height: 400px; margin: auto;"></div>
+                <div id="mensagem-qr" class="text-center mt-3"></div>
             </div>
         </div>
     </div>
 
+    <!-- Modal Aviso Download -->
+    <div class="modal fade" id="modalAvisoDownload" tabindex="-1" aria-labelledby="modalAvisoDownloadLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow rounded-3">
+                <div class="modal-header bg-warning text-dark">
+                    <h5 class="modal-title">Atenção!</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <p class="mb-0">Por favor, baixe os registros do mês anterior.</p>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-success w-100">Baixar Registros</button>
+                </div>
+            </div>
+        </div>
+    </div>
 
-    
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
     <script src="/static/js/libs/html5-qrcode.min.js"></script>
     <script src="/static/js/app.js"></script>
-
 </body>
 </html>

@@ -1,48 +1,150 @@
+:root {
+    --primary-color: #2c7be5;
+    --success-color: #28a745;
+    --danger-color: #dc3545;
+    --gray-100: #f8f9fa;
+    --gray-300: #e9ecef;
+    --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    --transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
 /* Estilo para o item da lista */
-#lista-trabalhadores li {
-    margin-bottom: 15px; /* Espaço entre as linhas */
-}
-
-/* Estilo para o botão Remover */
-.btn-sm {
-    margin-left: 10px; /* Espaço entre o botão e o texto */
-    padding: 5px 3px; /* Ajusta o tamanho interno do botão */
-    font-size: 12px;   /* Reduz o tamanho do texto */
-    border-radius: 3px; /* Ajusta as bordas arredondadas */
-}
-
-/* Caso queira ajustar o alinhamento vertical */
 #lista-trabalhadores {
-    padding-left: 0; /* Remove o padding lateral, se necessário */
-    list-style-type: none; /* Remove os marcadores de lista, se preferir */
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: 1rem;
+}
+
+#lista-trabalhadores li {
+    background: white;
+    padding: 1.25rem;
+    border-radius: 0.5rem;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#lista-trabalhadores li:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilo para botões */
+.btn-sm {
+    background: var(--primary-color);
+    border: none;
+    color: white;
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.875rem;
+    margin-left: 0.75rem;
+}
+
+.btn-sm:hover {
+    background: #276dc3;
+    transform: translateY(-1px);
+}
+
+.btn-sm:active {
+    transform: translateY(0);
+}
+
+/* Mensagens */
+.mensagem-sucesso,
+.mensagem-erro {
+    padding: 1rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    animation: slideIn 0.5s ease-out;
 }
 
 .mensagem-sucesso {
-    color: green;
-    font-weight: bold;
-    margin-top: 10px;
+    background: var(--success-color);
+    color: white;
 }
 
 .mensagem-erro {
-    color: red;
-    font-weight: bold;
-    margin-top: 10px;
+    background: var(--danger-color);
+    color: white;
 }
 
-
+/* Listas de tarefas e paletes */
+#lista-tarefas,
+#lista-paletes {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0;
+    display: grid;
+    gap: 0.75rem;
+}
 
 #lista-tarefas li,
 #lista-paletes li {
-    margin-bottom: 10px;
+    background: var(--gray-100);
+    padding: 1rem;
+    border-radius: 0.375rem;
+    transition: var(--transition);
 }
 
-
-
-.list-group-item {
-    position: relative; /* Define como um contêiner de referência para posicionamento */
+#lista-tarefas li:nth-child(odd),
+#lista-paletes li:nth-child(odd) {
+    background: var(--gray-300);
 }
 
+/* Container de cabeçalho */
+.header-container {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1.5rem 0;
+    border-bottom: 2px solid var(--gray-300);
+    margin-bottom: 2rem;
+}
 
+/* Botão de exportar */
+#btn-exportar-registros {
+    background: var(--primary-color);
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 2rem;
+    box-shadow: var(--shadow);
+    transition: var(--transition);
+    margin-left: auto;
+}
 
+#btn-exportar-registros:hover {
+    background: #216ba5;
+    box-shadow: 0 0 20px rgba(44, 123, 229, 0.3);
+}
 
+/* Animações */
+@keyframes slideIn {
+    from {
+        transform: translateY(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
+}
 
+/* Responsividade */
+@media (max-width: 768px) {
+    .header-container {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+    
+    #btn-exportar-registros {
+        margin-left: 0;
+        width: 100%;
+    }
+}
