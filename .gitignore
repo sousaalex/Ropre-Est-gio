@@ -4,6 +4,6 @@ __pycache__/
 *.pyc
 .vercel/
 *.log
-*.db
+
 venv/
 venv
