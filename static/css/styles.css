@@ -92,59 +92,13 @@
     transition: var(--transition);
 }
 
-#lista-tarefas li:nth-child(odd),
-#lista-paletes li:nth-child(odd) {
-    background: var(--gray-300);
+
+
+.list-group-item {
+    position: relative; /* Define como um contêiner de referência para posicionamento */
 }
 
-/* Container de cabeçalho */
-.header-container {
-    display: flex;
-    align-items: center;
-    gap: 1rem;
-    padding: 1.5rem 0;
-    border-bottom: 2px solid var(--gray-300);
-    margin-bottom: 2rem;
-}
 
-/* Botão de exportar */
-#btn-exportar-registros {
-    background: var(--primary-color);
-    color: white;
-    padding: 0.75rem 1.5rem;
-    border-radius: 2rem;
-    box-shadow: var(--shadow);
-    transition: var(--transition);
-    margin-left: auto;
-}
 
-#btn-exportar-registros:hover {
-    background: #216ba5;
-    box-shadow: 0 0 20px rgba(44, 123, 229, 0.3);
-}
 
-/* Animações */
-@keyframes slideIn {
-    from {
-        transform: translateY(-20px);
-        opacity: 0;
-    }
-    to {
-        transform: translateY(0);
-        opacity: 1;
-    }
-}
 
-/* Responsividade */
-@media (max-width: 768px) {
-    .header-container {
-        flex-direction: column;
-        align-items: flex-start;
-        gap: 1rem;
-    }
-    
-    #btn-exportar-registros {
-        margin-left: 0;
-        width: 100%;
-    }
-}
