@@ -43,13 +43,12 @@ Este software automatiza o registro de trabalho numa fábrica utilizando QR Code
 - [x] Painel administrativo para cadastrar novas tarefas, trabalhadores e paletes  
 - [x] Geração automática de **QR Codes** para trabalhadores, tarefas e paletes  
 - [x] **Exportação de dados** para planilhas Excel (.xlsx)  
-- [x] **Geração de PDFs** com cartões de trabalhadores e registros de paletes/tarefas  
+- [x] **Geração de PDFs** com cartões de trabalhadores e registros de paletes/tarefas 
+- [x] Implementação da **autenticação de usuários**  
+- [x] Implementação da **autenticação de usuários**  
+- [x] Melhorias na interface do painel administrativo  
+- [x] Testes e ajustes finais  
 
-## 🚧 O que falta fazer  
-
-- [ ] Implementação da **autenticação de usuários**  
-- [ ] Melhorias na interface do painel administrativo  
-- [ ] Testes e ajustes finais  
 
 ## 📜 Licença
 

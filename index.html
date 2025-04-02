@@ -3,307 +3,402 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Gestão de Fábrica</title>
+    <meta name="description" content="Sistema de Gestão de Fábrica - Controle eficiente de trabalhadores, paletes, tarefas e registros">
+    <meta name="keywords" content="gestão de fábrica, controle de produção, gestão de paletes, gestão de trabalhadores">
+    <meta name="author" content="Sistema de Gestão">
+    <title>Sistema de Gestão de Fábrica | Dashboard</title>
     <link rel="icon" href="data:,">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
     <link rel="stylesheet" href="/static/css/styles.css">
+
 </head>
 <body>
-    <div class="container mt-5">
-        <h1 class="text-center">Gestão de Fábrica</h1>
-
-        <!-- Modal -->
-        <div class="modal fade" id="authModal" tabindex="-1" aria-labelledby="authModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="authModalLabel">Login como Admin</h5>
-                    </div>
-                    <div class="modal-body">
-                        <div id="admin-fields">
-                            <div id="login-fields">
-                                <input type="email" id="admin-email" class="form-control" placeholder="Email" required>
-                                <input type="password" id="admin-password" class="form-control mt-2" placeholder="Senha" required>
-                                <button id="login-button-admin" class="btn btn-primary mt-2">Login</button>
-                                <div class="mt-2">
-                                    <span>Não tem uma conta? <a href="#" id="show-register">Registrar</a></span>
-                                </div>
-                            </div>
-                            <div id="register-fields" style="display: none;">
-                                <input type="email" id="register-email" class="form-control" placeholder="Email" required>
-                                <input type="password" id="register-password" class="form-control mt-2" placeholder="Senha" required>
-                                <button id="register-button-admin" class="btn btn-primary mt-2">Registrar</button>
-                                <div class="mt-2">
-                                    <span>Já tem uma conta? <a href="#" id="show-login">Fazer Login</a></span>
-                                </div>
-                            </div>
-                        </div>
-                        <div id="auth-message" class="mt-3" style="color: red;"></div>
-                    </div>
+    <!-- Container de Login -->
+    <div id="login-container" class="login-container">
+        <div class="login-card">
+            <h2 id="auth-title">Login</h2>
+            <div id="login-form">
+                <div class="mb-3">
+                    <input type="email" id="login-email" class="form-control" placeholder="Email" required>
                 </div>
+                <div class="mb-3">
+                    <input type="password" id="login-password" class="form-control" placeholder="Senha" required>
+                </div>
+                <button id="login-button" class="btn btn-login">Entrar</button>
+                <div class="toggle-link" id="show-register">Criar conta como Admin</div>
+                <div id="auth-message-login" class="auth-message" style="color: red;"></div>
             </div>
-        </div>
-
-        <div id="layout-compartilhado" style="display: none;">
-            <ul class="nav nav-tabs" id="tabs">
-                <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#tab-trabalhadores">Trabalhadores</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-paletes">Paletes</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-registro_trabalho">Registro Trabalho</a></li>
-                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#tab-tarefas">Tarefas</a></li>
-            </ul>
-            <div class="tab-content mt-4">
-                <!-- Trabalhadores -->
-                <div class="tab-pane fade show active" id="tab-trabalhadores">
-                    <div class="container mt-4">
-                        <h2>Lista de Trabalhadores</h2>
-                        <ul id="lista-trabalhadores" class="list-group mt-3">
-                            <!-- Aqui será carregada a lista de trabalhadores -->
-                        </ul>
-            
-                        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#form-adicionar-trabalhador">
-                            Adicionar Trabalhador
-                        </button>
-    
-                        <div id="mensagem-sucesso" style="display: none; color: green; margin-top: 10px;"></div>
-
-                    </div>
-            
-                    <!-- Modal do Bootstrap para adicionar trabalhador -->
-                    <div class="modal fade" id="form-adicionar-trabalhador" tabindex="-1" aria-labelledby="modalAdicionarTrabalhadorLabel" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="modalAdicionarTrabalhadorLabel">Adicionar Trabalhador</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <form id="form-adicionar-trabalhador">
-                                        <div class="mb-3">
-                                            <label for="nome-trabalhador" class="form-label">Nome:</label>
-                                            <input type="text" id="nome-trabalhador" class="form-control" placeholder="Nome" required>
-                                        </div>
-                                        
-                                        <div class="mb-3">
-                                            <label>
-                                                <input type="checkbox" id="is-chefe"> Definir como Chefe
-                                            </label>
-                                        </div>
-                                        <button type="submit" id="botao-adicionar" class="btn btn-primary">Salvar</button>
-                                        <div id="mensagem-sucesso" style="display: none; color: green; margin-top: 10px;"></div>
-
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
+            <div id="register-form" style="display: none;">
+                <div class="mb-3">
+                    <input type="email" id="register-email" class="form-control" placeholder="Email" required>
                 </div>
-    
-                
-                <!-- Paletes -->
-                <div class="tab-pane fade" id="tab-paletes">
-                    <div class="container mt-4">
-                        <h2>Lista de Paletes</h2>
-    
-                        <!-- Lista de paletes -->
-                        <ul id="lista-paletes" class="list-group mt-3">
-                            <!-- Aqui será carregada a lista de paletes dinamicamente -->
-                        </ul>
-                
-                        <!-- Botão para abrir o modal de adicionar palete -->
-                        <button type="button" class="btn btn-primary mb-3" data-bs-toggle="modal" data-bs-target="#modalAdicionarPalete">
-                            Adicionar Palete
-                        </button>
-                        <div id="mensagem-sucesso-palete" style="display: none; color: green; margin-top: 10px;"></div>
-    
-                        
-                    </div>
-                
-                    <!-- Modal para adicionar palete -->
-                    <div class="modal fade" id="modalAdicionarPalete" tabindex="-1" aria-labelledby="modalAdicionarPaleteLabel" aria-hidden="true">
-                        <div class="modal-dialog modal-lg">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="modalAdicionarPaleteLabel">Adicionar Palete</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <form id="form-adicionar-palete" onsubmit="adicionarPalete(); return false;">
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="data-entrega" class="form-label">Data de Entrega:</label>
-                                                <input type="date" id="data-entrega" class="form-control" required>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="op-palete" class="form-label">OP:</label>
-                                                <input type="text" id="op-palete" class="form-control" placeholder="Número OP" required>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="referencia-palete" class="form-label">Referência:</label>
-                                                <input type="text" id="referencia-palete" class="form-control" placeholder="Referência" required>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="leva-embalagem-palete" class="form-label">Leva Embalagem:</label>
-                                                <select id="leva-embalagem-palete" class="form-control" required>
-                                                    <option value="" disabled selected>Selecione...</option>
-                                                    <option value="true">Sim</option>
-                                                    <option value="false">Não</option>
-                                                </select>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="nome-produto-palete" class="form-label">Nome do Produto:</label>
-                                                <input type="text" id="nome-produto-palete" class="form-control" placeholder="Nome do Produto" required>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="quantidade-palete" class="form-label">Quantidade:</label>
-                                                <input type="number" id="quantidade-palete" class="form-control" placeholder="Quantidade" required>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="medida-palete" class="form-label">Medida:</label>
-                                                <input type="text" id="medida-palete" class="form-control" placeholder="Medida" required>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="data-hora-palete" class="form-label">Data e Hora:</label>
-                                                <input type="datetime-local" id="data-hora-palete" class="form-control" required>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="cor-botao-palete" class="form-label">Cor do Botão:</label>
-                                                <input type="text" id="cor-botao-palete" class="form-control" placeholder="Cor do Botão" required>
-                                            </div>
-                                            <div class="col-md-6 mb-3">
-                                                <label for="numero-lote-palete" class="form-label">Número do Lote:</label>
-                                                <input type="text" id="numero-lote-palete" class="form-control" placeholder="Número do Lote" required>
-                                            </div>
-                                        </div>
-                                        <div class="row">
-                                            <div class="col-md-6 mb-3">
-                                                <label for="cor-ribete-palete" class="form-label">Cor do Ribete:</label>
-                                                <input type="text" id="cor-ribete-palete" class="form-control" placeholder="Cor do Ribete" required>
-                                            </div>
-                                        </div>
-                                       
-                                        <button type="submit" class="btn btn-primary">Salvar</button>
-                                        <div id="mensagem-sucesso-add-palete" style="display: none; color: green; margin-top: 10px;"></div>
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-    
+                <div class="mb-3">
+                    <input type="password" id="register-password" class="form-control" placeholder="Senha" required>
                 </div>
-                
-                
-                <!-- Registros Trabalho -->
-                <div class="tab-pane fade" id="tab-registro_trabalho">
-                    <div class="header-container">
-                        <h3>Registro Trabalho</h3>
-                        <button class="btn-exportar-registros btn btn-success">Exportar Registros de Trabalho</button>
-                    </div>                    
-                    <ul id="lista-registro"></ul>
-                
-                    <button id="start-scanner-compartilhado" class="btn btn-primary">Iniciar Scanner</button>
-                    <div id="reader-compartilhado" style="width: 300px; height: 300px; margin: auto;"></div>
-                    <div id="mensagem-qr" style="text-align: center; margin-top: 10px;"></div>
-                
-                </div>
-                
-                <!-- Tarefas -->
-                <div class="tab-pane fade" id="tab-tarefas">
-                    <h3>Tarefas</h3>
-                    <ul id="lista-tarefas" class="list-group-item"></ul>
-                
-                    <!-- Botão para abrir o modal -->
-                    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalAdicionarTarefa">
-                        Adicionar Tarefa
-                    </button>
-                    <div id="mensagem-sucesso-lista" style="display: none; color: green; margin-top: 10px;"></div>
-
-                
-                    <!-- Modal -->
-                    <div class="modal fade" id="modalAdicionarTarefa" tabindex="-1" aria-labelledby="modalAdicionarTarefaLabel" aria-hidden="true">
-                        <div class="modal-dialog">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                    <h5 class="modal-title" id="modalAdicionarTarefaLabel">Adicionar Nova Tarefa</h5>
-                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                                </div>
-                                <div class="modal-body">
-                                    <form id="formAdicionarTarefa">
-                                        <div class="mb-3">
-                                            <label for="nomeTarefa" class="form-label">Tarefa:</label>
-                                            <input type="text" class="form-control" id="nomeTarefa" name="nome_tarefa" placeholder="Digite o nome da tarefa" required>
-
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="secao" class="form-label">Secção:</label>
-                                            <select id="secao" class="form-control">
-                                                <option value="" disabled selected>Selecione uma secção ⮟</option>
-                                                <option value="Acabamento">Acabamento</option>
-                                                <option value="Controle de Qualidade">Controle de Qualidade</option>
-                                                <option value="Serigrafia">Serigrafia</option>
-                                                <option value="Confeção">Confeção</option>
-                                                <option value="Sublimação">Sublimação</option>
-                                                <option value="Corte_vinco">Corte e vinco</option>
-                                                <option value="Cola">Cola</option>
-                                                <option value="Bico_pato">Bico de Pato</option>
-                                                <option value="Bolha">Bolha</option>
-                                                <option value="Flexografia">Flexografia</option>
-                                                <option value="Laminagem">Laminagem</option>
-                                                <option value="Maquina_Envelopes">Maquina dos envelopes</option>
-                                                <option value="Maquina_Sacos">Maquina Sacos</option>
-                                                <option value="Expedição">Expedição</option>
-                                                <option value="Faturação">Faturação</option>
-                                            </select>
-                                        </div>
-                                        
-                                            <button type="submit" class="btn btn-primary">Salvar</button>
-                                            <div id="mensagem-sucesso-tarefa" style="display: none; color: green; margin-top: 10px;"></div>
-                                    
-                                    </form>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-            </div>
-         
-        </div>
-        
-
-        <!-- Funcionário Layout -->
-        <div id="funcionario-layout" style="display: none;">
-            <div id="tab-qr-code">
-                <h2>Minhas Tarefas</h2>
-                <button id="start-scanner-funcionario" class="btn btn-primary">Iniciar Scanner</button>
-                <div id="reader-funcionario" style="width: 300px; height: 300px; margin: auto;"></div>
-                <div id="mensagem-qr" style="text-align: center; margin-top: 10px;"></div>
+                <button id="register-button" class="btn btn-login">Registrar Admin</button>
+                <div class="toggle-link" id="show-login">Já tem conta? Fazer Login</div>
+                <div id="auth-message-register" class="auth-message" style="color: red;"></div>
             </div>
         </div>
     </div>
 
-    <!-- Modal de Aviso para Download -->
-    <div class="modal fade" id="modalAvisoDownload" tabindex="-1" aria-labelledby="modalAvisoDownloadLabel" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
+    <!-- Layout Principal -->
+    <div id="main-container">
+        <!-- Sidebar -->
+        <div class="dashboard-sidebar">
+            <div class="sidebar-header">
+                <h1>Gestão de Fábrica</h1>
+            </div>
+            <ul class="nav nav-tabs" id="tabs" role="tablist">
+                <li class="nav-item">
+                    <a class="nav-link active" data-bs-toggle="tab" href="#tab-trabalhadores">
+                        <i class="bi bi-people"></i>
+                        Trabalhadores
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tab-paletes">
+                        <i class="bi bi-box"></i>
+                        Paletes
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tab-registro_trabalho">
+                        <i class="bi bi-clipboard-data"></i>
+                        Registro Trabalho
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tab-tarefas">
+                        <i class="bi bi-list-task"></i>
+                        Tarefas
+                    </a>
+                </li>
+                <li class="nav-item" id="tab-usuarios-li">
+                    <a class="nav-link" data-bs-toggle="tab" href="#tab-usuarios">
+                        <i class="bi bi-person-gear"></i>
+                        Usuários
+                    </a>
+                </li>
+            </ul>
+            <button id="logout-button" class="btn btn-danger mt-4 w-100">
+                <i class="bi bi-box-arrow-right"></i>
+                Sair
+            </button>
+        </div>
+
+        <!-- Main Content -->
+        <div class="dashboard-content">
+            <!-- Layout Compartilhado (Admin e Chefe) -->
+            <div id="layout-compartilhado">
+                <div class="tab-content">
+                    <!-- Trabalhadores -->
+                    <div class="tab-pane fade show active" id="tab-trabalhadores">
+                        <!-- <div class="stats-grid">
+                            <div class="stat-card">
+                                <h3>Total de Trabalhadores</h3>
+                                <div class="value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Trabalhadores Ativos</h3>
+                                <div class="value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Chefes de Equipe</h3>
+                                <div class="value">0</div>
+                            </div>
+                        </div> -->
+                        <div class="dashboard-card">
+                            <h2>Lista de Trabalhadores</h2>
+                            <ul id="lista-trabalhadores" class="list-group mt-3"></ul>
+                            <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#form-adicionar-trabalhador">
+                                <i class="bi bi-plus-lg"></i>
+                                Adicionar Trabalhador
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Paletes -->
+                    <div class="tab-pane fade" id="tab-paletes">
+                        <!-- <div class="stats-grid">
+                            <div class="stat-card">
+                                <h3>Total de Paletes</h3>
+                                <div class="value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Paletes em Produção</h3>
+                                <div class="value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Paletes Concluídos</h3>
+                                <div class="value">0</div>
+                            </div>
+                        </div> -->
+                        <div class="dashboard-card">
+                            <h2>Lista de Paletes</h2>
+                            <ul id="lista-paletes" class="list-group mt-3"></ul>
+                            <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#form-adicionar-palete">
+                                <i class="bi bi-plus-lg"></i>
+                                Adicionar Palete
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Registro Trabalho -->
+                    <div class="tab-pane fade" id="tab-registro_trabalho">
+                        <!-- <div class="stats-grid">
+                            <div class="stat-card">
+                                <h3>Registros Hoje</h3>
+                                <div class="value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Registros na Semana</h3>
+                                <div class="value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Total de Registros</h3>
+                                <div class="value">0</div>
+                            </div>
+                        </div> -->
+                        <div class="dashboard-card">
+                            <h2>Registro de Trabalho</h2>
+                            <button id="start-scanner-compartilhado" class="btn btn-primary">
+                                <i class="bi bi-qr-code-scan"></i>
+                                Iniciar Scanner
+                            </button>
+                            <div id="reader-compartilhado"></div>
+                            <div id="mensagem-qr-compartilhado" class="text-center mt-3"></div>
+                            <ul id="lista-registros" class="list-group mt-3"></ul>
+                            <button id="exportar-registros" class="btn btn-success mt-3">
+                                <i class="bi bi-download"></i>
+                                Exportar Registros
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Tarefas -->
+                    <div class="tab-pane fade" id="tab-tarefas">
+                        <!-- <div class="stats-grid">
+                            <div class="stat-card">
+                                <h3>Total de Tarefas</h3>
+                                <div class="value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Tarefas em Andamento</h3>
+                                <div class="value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Tarefas Concluídas</h3>
+                                <div class="value">0</div>
+                            </div>
+                        </div> -->
+                        <div class="dashboard-card">
+                            <h2>Lista de Tarefas</h2>
+                            <ul id="lista-tarefas" class="list-group mt-3"></ul>
+                            <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#form-adicionar-tarefa">
+                                <i class="bi bi-plus-lg"></i>
+                                Adicionar Tarefa
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Usuários -->
+                    <div class="tab-pane fade" id="tab-usuarios">
+                        <!-- <div class="stats-grid">
+                            <div class="stat-card">
+                                <h3>Total de Usuários</h3>
+                                <div class="value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Administradores</h3>
+                                <div class="value">0</div>
+                            </div>
+                            <div class="stat-card">
+                                <h3>Funcionários</h3>
+                                <div class="value">0</div>
+                            </div>
+                        </div> -->
+                        <div class="dashboard-card">
+                            <h2>Gerenciar Usuários</h2>
+                            <ul id="lista-usuarios" class="list-group mt-3"></ul>
+                            <button type="button" class="btn btn-primary mt-3" data-bs-toggle="modal" data-bs-target="#form-adicionar-usuario">
+                                <i class="bi bi-plus-lg"></i>
+                                Adicionar Usuário
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Funcionário Layout -->
+            <div id="funcionario-layout" style="display: none;">
+                <div class="dashboard-card">
+                    <h2>Minhas Tarefas</h2>
+                    <button id="start-scanner-funcionario" class="btn btn-primary">
+                        <i class="bi bi-qr-code-scan"></i>
+                        Iniciar Scanner
+                    </button>
+                    <div id="reader-funcionario"></div>
+                    <div id="mensagem-qr-funcionario" class="text-center mt-3"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modals -->
+    <!-- Modal Adicionar Trabalhador -->
+    <div class="modal fade" id="form-adicionar-trabalhador" tabindex="-1" aria-labelledby="modalAdicionarTrabalhadorLabel" aria-hidden="true">
+        <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="modalAvisoDownloadLabel">Atenção!</h5>
+                    <h5 class="modal-title" id="modalAdicionarTrabalhadorLabel">Adicionar Trabalhador</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <div class="modal-body">
-                    <p>Por favor, baixe os registros do mês anterior.</p>
+                    <form id="form-adicionar-trabalhador">
+                        <div class="mb-3">
+                            <label for="nome-trabalhador" class="form-label">Nome:</label>
+                            <input type="text" id="nome-trabalhador" class="form-control" placeholder="Nome" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-check">
+                                <input type="checkbox" id="is-chefe" class="form-check-input">
+                                <span class="form-check-label">Definir como Chefe</span>
+                            </label>
+                        </div>
+                        <button type="submit" id="botao-adicionar" class="btn btn-primary">
+                            <i class="bi bi-save"></i>
+                            Salvar
+                        </button>
+                    </form>
                 </div>
-                <div class="modal-footer">
-                    <button class="btn-exportar-registros btn btn-success">Baixar Registros</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar Palete -->
+    <div class="modal fade" id="form-adicionar-palete" tabindex="-1" aria-labelledby="modalAdicionarPaleteLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAdicionarPaleteLabel">Adicionar Palete</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-palete">
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="data-entrega" class="form-label">Data de Entrega:</label>
+                                <input type="date" id="data-entrega" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="op" class="form-label">OP:</label>
+                                <input type="text" id="op" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="referencia" class="form-label">Referência:</label>
+                                <input type="text" id="referencia" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="nome-produto" class="form-label">Nome do Produto:</label>
+                                <input type="text" id="nome-produto" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="medida" class="form-label">Medida:</label>
+                                <input type="text" id="medida" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="cor-botao" class="form-label">Cor do Botão:</label>
+                                <input type="text" id="cor-botao" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="cor-ribete" class="form-label">Cor do Ribete:</label>
+                                <input type="text" id="cor-ribete" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-check">
+                                    <input type="checkbox" id="leva-embalagem" class="form-check-input">
+                                    <span class="form-check-label">Leva Embalagem</span>
+                                </label>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="quantidade" class="form-label">Quantidade:</label>
+                                <input type="number" id="quantidade" class="form-control" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="numero-lote" class="form-label">Número do Lote:</label>
+                                <input type="text" id="numero-lote" class="form-control" required>
+                            </div>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i>
+                            Salvar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar Tarefa -->
+    <div class="modal fade" id="form-adicionar-tarefa" tabindex="-1" aria-labelledby="modalAdicionarTarefaLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAdicionarTarefaLabel">Adicionar Tarefa</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="form-tarefa">
+                        <div class="mb-3">
+                            <label for="nome-tarefa" class="form-label">Nome da Tarefa:</label>
+                            <input type="text" id="nome-tarefa" class="form-control" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="secao" class="form-label">Seção:</label>
+                            <input type="text" id="secao" class="form-control" required>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i>
+                            Salvar
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Adicionar Usuário -->
+    <div class="modal fade" id="form-adicionar-usuario" tabindex="-1" aria-labelledby="modalAdicionarUsuarioLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="modalAdicionarUsuarioLabel">Adicionar Usuário</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="mb-3">
+                            <label for="usuario-email" class="form-label">Email:</label>
+                            <input type="email" id="usuario-email" class="form-control" placeholder="Email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="usuario-senha" class="form-label">Senha:</label>
+                            <input type="password" id="usuario-senha" class="form-control" placeholder="Senha" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="usuario-tipo" class="form-label">Tipo de Usuário:</label>
+                            <select id="usuario-tipo" class="form-control" required>
+                                <option value="chefe">Chefe</option>
+                                <option value="funcionario">Funcionário</option>
+                            </select>
+                        </div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save"></i>
+                            Salvar
+                        </button>
+                    </form>
                 </div>
             </div>
         </div>
