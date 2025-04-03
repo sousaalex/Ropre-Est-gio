@@ -24,7 +24,7 @@ import jwt
 app = Flask(__name__)
 CORS(app)
 app.config['DATABASE'] = 'database.db'
-app.config['SECRET_KEY'] = 'sua_chave_secreta_aqui'  # Substitua por uma chave segura em produção
+app.config['SECRET_KEY'] = 'e0fab1400bb09065526ef81315364fc81a6a0c05d77d47d30b009810be9c304a'  # Substitua por uma chave segura em produção
 
 # Função para conectar ao banco de dados
 def get_db():
