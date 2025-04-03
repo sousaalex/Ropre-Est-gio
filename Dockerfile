@@ -1,13 +1,15 @@
 
 FROM python:3.12-slim as builder
 
-# Install necessary system dependencies
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    libopenblas-dev \
-    libomp-dev \
-    swig && \
+# Instalar dependências do sistema
+RUN sed -i 's/deb.debian.org/ftp.br.debian.org/' /etc/apt/sources.list && \
+    apt-get update && \
+    apt-get install -y --fix-missing \
+        build-essential \
+        cmake \
+        libopenblas-dev \
+        libomp-dev \
+        swig && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
 # Set the working directory
