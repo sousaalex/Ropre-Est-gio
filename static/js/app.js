@@ -4,7 +4,7 @@ const API_URL = window.location.hostname.includes("localhost") ||
                 window.location.hostname.includes("127.0.0.1") ||
                 window.location.hostname.includes("192.168.30.20")
   ? "http://localhost:8000" // URL do backend local
-  : `https://pgr-v10.vercel.app`; // URL de produção
+  : `https://ropre-est-gio.onrender.com`; // URL de produção
 
 console.log(`API_URL configurada: ${API_URL}`);
 
