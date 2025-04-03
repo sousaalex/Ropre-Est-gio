@@ -121,6 +121,14 @@ def home():
     except Exception as e:
         print(f"Erro ao servir index.html: {e}")
         return jsonify({'message': 'Erro ao servir a página inicial'}), 500
+    
+@app.route('/health')
+def Health():
+    try:
+        return jsonify({'message': 'Servidor está funcionando corretamente'}), 200
+    except Exception as e:
+        print(f"Erro ao servir: {e}") 
+        return jsonify({'message': 'Erro ao servir a página inicial'}), 500
 
 # Evitar erros de favicon
 @app.route('/favicon.ico')
